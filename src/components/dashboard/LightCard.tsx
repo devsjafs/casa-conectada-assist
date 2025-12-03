@@ -3,7 +3,16 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import type { Light } from '@/data/mockData';
+
+interface Light {
+  id: string;
+  name: string;
+  room: string;
+  isOn: boolean;
+  brightness: number;
+  color?: string;
+  brand: string;
+}
 
 interface LightCardProps {
   light: Light;
@@ -11,7 +20,7 @@ interface LightCardProps {
   onBrightnessChange: (id: string, brightness: number) => void;
 }
 
-const brandColors = {
+const brandColors: Record<string, string> = {
   tuya: 'text-orange-400',
   positivo: 'text-green-400',
   smartthings: 'text-blue-400',
@@ -55,8 +64,12 @@ const LightCard = ({ light, onToggle, onBrightnessChange }: LightCardProps) => {
         <h3 className="font-medium text-sm">{light.name}</h3>
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           {light.room}
-          <span className="mx-1">•</span>
-          <span className={brandColors[light.brand]}>{light.brand}</span>
+          {light.brand && (
+            <>
+              <span className="mx-1">•</span>
+              <span className={brandColors[light.brand] || 'text-muted-foreground'}>{light.brand}</span>
+            </>
+          )}
         </p>
       </div>
 

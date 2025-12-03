@@ -1,10 +1,15 @@
-import { Thermometer, Droplets, Zap, Shield } from 'lucide-react';
+import { Cpu, Power, Zap, Shield } from 'lucide-react';
 
-const QuickStats = () => {
+interface QuickStatsProps {
+  devicesCount: number;
+  onlineCount: number;
+}
+
+const QuickStats = ({ devicesCount, onlineCount }: QuickStatsProps) => {
   const stats = [
-    { icon: Thermometer, label: 'Temperatura Média', value: '24°C', color: 'text-orange-400' },
-    { icon: Droplets, label: 'Umidade Média', value: '55%', color: 'text-blue-400' },
-    { icon: Zap, label: 'Energia Hoje', value: '12.4 kWh', color: 'text-yellow-400' },
+    { icon: Cpu, label: 'Dispositivos', value: devicesCount.toString(), color: 'text-primary' },
+    { icon: Power, label: 'Ativos', value: onlineCount.toString(), color: 'text-success' },
+    { icon: Zap, label: 'Consumo', value: '-- kWh', color: 'text-yellow-400' },
     { icon: Shield, label: 'Segurança', value: 'Ativa', color: 'text-success' },
   ];
 

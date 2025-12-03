@@ -1,7 +1,14 @@
 import { Camera, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { Camera as CameraType } from '@/data/mockData';
+
+interface CameraType {
+  id: string;
+  name: string;
+  location: string;
+  status: 'online' | 'offline';
+  thumbnail: string;
+}
 
 interface CameraCardProps {
   camera: CameraType;

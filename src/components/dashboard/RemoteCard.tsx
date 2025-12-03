@@ -1,7 +1,20 @@
 import { Tv, Wind, Speaker, Fan, Power, Plus, Minus, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { RemoteDevice } from '@/data/mockData';
+
+interface RemoteDevice {
+  id: string;
+  name: string;
+  type: 'tv' | 'ac' | 'soundbar' | 'fan';
+  room: string;
+  isOn: boolean;
+  brand: string;
+  settings?: {
+    temperature?: number;
+    volume?: number;
+    mode?: string;
+  };
+}
 
 interface RemoteCardProps {
   device: RemoteDevice;
@@ -9,20 +22,21 @@ interface RemoteCardProps {
   onSettingChange: (id: string, setting: string, value: number) => void;
 }
 
-const deviceIcons = {
+const deviceIcons: Record<string, React.ElementType> = {
   tv: Tv,
   ac: Wind,
   soundbar: Speaker,
   fan: Fan,
 };
 
-const brandColors = {
+const brandColors: Record<string, string> = {
   positivo: 'text-green-400',
   smartthings: 'text-blue-400',
+  tuya: 'text-orange-400',
 };
 
 const RemoteCard = ({ device, onToggle, onSettingChange }: RemoteCardProps) => {
-  const Icon = deviceIcons[device.type];
+  const Icon = deviceIcons[device.type] || Tv;
 
   return (
     <div className={cn(
@@ -60,8 +74,12 @@ const RemoteCard = ({ device, onToggle, onSettingChange }: RemoteCardProps) => {
         <h3 className="font-medium text-sm">{device.name}</h3>
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           {device.room}
-          <span className="mx-1">•</span>
-          <span className={brandColors[device.brand]}>{device.brand}</span>
+          {device.brand && (
+            <>
+              <span className="mx-1">•</span>
+              <span className={brandColors[device.brand] || 'text-muted-foreground'}>{device.brand}</span>
+            </>
+          )}
         </p>
       </div>
 
