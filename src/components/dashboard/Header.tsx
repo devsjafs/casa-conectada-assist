@@ -1,7 +1,22 @@
-import { Bell, Settings, User, Home } from 'lucide-react';
+import { Bell, Settings, LogOut, Home, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-const Header = () => {
+interface HeaderProps {
+  onOpenIntegrations?: () => void;
+}
+
+const Header = ({ onOpenIntegrations }: HeaderProps) => {
+  const { user, signOut } = useAuth();
+  
   const currentTime = new Date().toLocaleTimeString('pt-BR', { 
     hour: '2-digit', 
     minute: '2-digit' 
@@ -12,6 +27,13 @@ const Header = () => {
     day: 'numeric', 
     month: 'long' 
   });
+
+  const userInitials = user?.user_metadata?.full_name
+    ?.split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || user?.email?.[0]?.toUpperCase() || 'U';
 
   return (
     <header className="glass sticky top-0 z-50 px-6 py-4">
@@ -34,16 +56,46 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenIntegrations && (
+            <Button variant="ghost" size="icon" onClick={onOpenIntegrations} title="Integrações">
+              <Plug className="w-5 h-5" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <User className="w-5 h-5" />
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 glass">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">{user?.user_metadata?.full_name || 'Usuário'}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onOpenIntegrations?.()}>
+                <Plug className="w-4 h-4 mr-2" />
+                Integrações
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="w-4 h-4 mr-2" />
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut} className="text-destructive">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

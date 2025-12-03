@@ -1,7 +1,12 @@
-import { Sofa, Bed, CookingPot, Bath, Monitor, Home } from 'lucide-react';
+import { Sofa, Bed, CookingPot, Bath, Monitor, Home, Car, Trees, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { Room } from '@/data/mockData';
+
+interface Room {
+  id: string;
+  name: string;
+  icon: string;
+}
 
 interface RoomSelectorProps {
   rooms: Room[];
@@ -15,6 +20,10 @@ const roomIcons: Record<string, React.ElementType> = {
   'cooking-pot': CookingPot,
   bath: Bath,
   monitor: Monitor,
+  home: Home,
+  car: Car,
+  trees: Trees,
+  dumbbell: Dumbbell,
 };
 
 const RoomSelector = ({ rooms, selectedRoom, onSelectRoom }: RoomSelectorProps) => {
@@ -33,7 +42,7 @@ const RoomSelector = ({ rooms, selectedRoom, onSelectRoom }: RoomSelectorProps) 
       </Button>
       
       {rooms.map((room) => {
-        const Icon = roomIcons[room.icon] || Sofa;
+        const Icon = roomIcons[room.icon] || Home;
         const isSelected = selectedRoom === room.id;
         
         return (
@@ -48,9 +57,6 @@ const RoomSelector = ({ rooms, selectedRoom, onSelectRoom }: RoomSelectorProps) 
           >
             <Icon className="w-4 h-4" />
             {room.name}
-            {room.temperature && (
-              <span className="text-xs opacity-70">{room.temperature}°C</span>
-            )}
           </Button>
         );
       })}

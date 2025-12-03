@@ -14,7 +14,194 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cameras: {
+        Row: {
+          device_id: string
+          id: string
+          last_snapshot_at: string | null
+          snapshot_url: string | null
+          status: string | null
+          stream_url: string | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          last_snapshot_at?: string | null
+          snapshot_url?: string | null
+          status?: string | null
+          stream_url?: string | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          last_snapshot_at?: string | null
+          snapshot_url?: string | null
+          status?: string | null
+          stream_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cameras_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      devices: {
+        Row: {
+          created_at: string
+          external_id: string | null
+          id: string
+          integration_id: string | null
+          is_on: boolean | null
+          metadata: Json | null
+          name: string
+          room_id: string | null
+          settings: Json | null
+          type: Database["public"]["Enums"]["device_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          integration_id?: string | null
+          is_on?: boolean | null
+          metadata?: Json | null
+          name: string
+          room_id?: string | null
+          settings?: Json | null
+          type: Database["public"]["Enums"]["device_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          integration_id?: string | null
+          is_on?: boolean | null
+          metadata?: Json | null
+          name?: string
+          room_id?: string | null
+          settings?: Json | null
+          type?: Database["public"]["Enums"]["device_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_connected: boolean | null
+          metadata: Json | null
+          name: string
+          refresh_token: string | null
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          metadata?: Json | null
+          name: string
+          refresh_token?: string | null
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          metadata?: Json | null
+          name?: string
+          refresh_token?: string | null
+          type?: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +210,23 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      device_type:
+        | "light"
+        | "camera"
+        | "ac"
+        | "tv"
+        | "fan"
+        | "soundbar"
+        | "sensor"
+        | "switch"
+        | "other"
+      integration_type:
+        | "tuya"
+        | "smartthings"
+        | "positivo"
+        | "samsung"
+        | "google_home"
+        | "alexa"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +353,26 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      device_type: [
+        "light",
+        "camera",
+        "ac",
+        "tv",
+        "fan",
+        "soundbar",
+        "sensor",
+        "switch",
+        "other",
+      ],
+      integration_type: [
+        "tuya",
+        "smartthings",
+        "positivo",
+        "samsung",
+        "google_home",
+        "alexa",
+      ],
+    },
   },
 } as const
