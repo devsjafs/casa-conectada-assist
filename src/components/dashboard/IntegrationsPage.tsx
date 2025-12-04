@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plug, Check, ExternalLink, Info } from 'lucide-react';
+import { Plug, Check, ExternalLink, Info, Unplug } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Integration {
@@ -16,6 +16,7 @@ interface Integration {
   description: string;
   is_connected: boolean;
   comingSoon?: boolean;
+  hasOAuth?: boolean;
 }
 
 const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
@@ -24,18 +25,21 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Tuya / Smart Life',
     logo: '🔌',
     description: 'Conecte dispositivos Tuya, Smart Life e outras marcas compatíveis.',
+    hasOAuth: true,
   },
   {
     type: 'smartthings',
     name: 'Samsung SmartThings',
     logo: '📱',
     description: 'Integre com dispositivos Samsung e SmartThings Hub.',
+    hasOAuth: true,
   },
   {
     type: 'positivo',
     name: 'Positivo Casa Inteligente',
     logo: '🏠',
     description: 'Controle dispositivos da linha Positivo Casa Inteligente.',
+    hasOAuth: true,
   },
   {
     type: 'samsung',
@@ -56,7 +60,7 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Amazon Alexa',
     logo: '🔵',
     description: 'Controle dispositivos conectados à Alexa.',
-    comingSoon: true,
+    hasOAuth: true,
   },
 ];
 
@@ -96,11 +100,55 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
     
     setLoading(integrationType);
     
-    // For now, simulate a connection - in production, this would open OAuth flow
-    toast({
-      title: 'Em breve!',
-      description: 'A integração OAuth será implementada em uma próxima versão. Por enquanto, você pode adicionar dispositivos manualmente.',
-    });
+    // OAuth URLs for each platform
+    const oauthUrls: Record<string, string> = {
+      smartthings: `https://api.smartthings.com/oauth/authorize?client_id=${import.meta.env.VITE_SMARTTHINGS_CLIENT_ID || 'NOT_CONFIGURED'}&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth/callback/smartthings')}&scope=r:devices:* x:devices:*`,
+      positivo: `https://api.positivocasainteligente.com.br/oauth/authorize?client_id=${import.meta.env.VITE_POSITIVO_CLIENT_ID || 'NOT_CONFIGURED'}&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth/callback/positivo')}`,
+      alexa: `https://www.amazon.com/ap/oa?client_id=${import.meta.env.VITE_ALEXA_CLIENT_ID || 'NOT_CONFIGURED'}&scope=alexa::smart_home&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth/callback/alexa')}`,
+      tuya: `https://openapi.tuyaus.com/v1.0/token?grant_type=1`,
+    };
+
+    const url = oauthUrls[integrationType];
+    
+    if (!url || url.includes('NOT_CONFIGURED')) {
+      toast({
+        title: 'Configuração necessária',
+        description: 'O Client ID para esta integração ainda não foi configurado. Entre em contato com o administrador.',
+        variant: 'destructive',
+      });
+      setLoading(null);
+      return;
+    }
+
+    // Open OAuth in new window
+    window.open(url, '_blank', 'width=600,height=700');
+    setLoading(null);
+  };
+
+  const handleDisconnect = async (integrationType: string, integrationName: string) => {
+    if (!user) return;
+    
+    setLoading(integrationType);
+    
+    const { error } = await supabase
+      .from('integrations')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', integrationType as any);
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível desconectar a integração.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Desconectado!',
+        description: `${integrationName} foi desconectado com sucesso.`,
+      });
+      fetchIntegrations();
+    }
     
     setLoading(null);
   };
@@ -152,8 +200,9 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
         <div className="text-sm">
           <p className="font-medium">Como funciona?</p>
           <p className="text-muted-foreground">
-            Ative uma integração para começar a adicionar dispositivos daquela plataforma. 
-            Em breve, você poderá fazer login com OAuth para importar dispositivos automaticamente.
+            Use "Login OAuth" para conectar sua conta e importar dispositivos automaticamente, 
+            ou "Ativar" para adicionar dispositivos manualmente. Para OAuth funcionar, 
+            as credenciais de API devem estar configuradas.
           </p>
         </div>
       </div>
@@ -216,9 +265,25 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
                         </Button>
                       </>
                     ) : (
-                      <Button variant="outline" className="w-full" onClick={() => handleConnect(integration.type)}>
-                        Reconectar
-                      </Button>
+                      <div className="flex gap-2 w-full">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => handleConnect(integration.type)}
+                          disabled={loading === integration.type}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Reconectar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={() => handleDisconnect(integration.type, integration.name)}
+                          disabled={loading === integration.type}
+                        >
+                          <Unplug className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}
