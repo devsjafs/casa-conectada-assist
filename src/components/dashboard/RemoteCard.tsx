@@ -1,6 +1,8 @@
-import { Tv, Wind, Speaker, Fan, Power, Plus, Minus, Volume2 } from 'lucide-react';
+import { useState } from 'react';
+import { Tv, Wind, Speaker, Fan, Power, Plus, Minus, Volume2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import ACControlSheet from './ACControlSheet';
 
 interface RemoteDevice {
   id: string;
@@ -13,13 +15,14 @@ interface RemoteDevice {
     temperature?: number;
     volume?: number;
     mode?: string;
+    fanSpeed?: string;
   };
 }
 
 interface RemoteCardProps {
   device: RemoteDevice;
   onToggle: (id: string) => void;
-  onSettingChange: (id: string, setting: string, value: number) => void;
+  onSettingChange: (id: string, setting: string, value: number | string) => void;
 }
 
 const deviceIcons: Record<string, React.ElementType> = {
@@ -36,128 +39,136 @@ const brandColors: Record<string, string> = {
 };
 
 const RemoteCard = ({ device, onToggle, onSettingChange }: RemoteCardProps) => {
+  const [showACControl, setShowACControl] = useState(false);
   const Icon = deviceIcons[device.type] || Tv;
 
+  const handleCardClick = () => {
+    if (device.type === 'ac') {
+      setShowACControl(true);
+    }
+  };
+
+  const temperature = device.settings?.temperature ?? 24;
+  const mode = device.settings?.mode ?? 'cool';
+
   return (
-    <div className={cn(
-      "glass rounded-xl p-4 transition-all duration-300",
-      device.isOn && "glow-accent"
-    )}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn(
-          "p-3 rounded-xl transition-all duration-300",
-          device.isOn 
-            ? "bg-accent/20" 
-            : "bg-secondary"
-        )}>
-          <Icon 
+    <>
+      <div 
+        className={cn(
+          "glass rounded-xl p-4 transition-all duration-300 cursor-pointer hover:scale-[1.02]",
+          device.isOn && "glow-accent"
+        )}
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div className={cn(
+            "p-3 rounded-xl transition-all duration-300",
+            device.isOn 
+              ? "bg-accent/20" 
+              : "bg-secondary"
+          )}>
+            <Icon 
+              className={cn(
+                "w-6 h-6 transition-all duration-300",
+                device.isOn ? "text-accent" : "text-muted-foreground"
+              )} 
+            />
+          </div>
+          <Button 
+            variant={device.isOn ? "default" : "secondary"}
+            size="icon"
             className={cn(
-              "w-6 h-6 transition-all duration-300",
-              device.isOn ? "text-accent" : "text-muted-foreground"
-            )} 
-          />
+              "h-8 w-8 rounded-full transition-all",
+              device.isOn && "glow-accent"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(device.id);
+            }}
+          >
+            <Power className="w-4 h-4" />
+          </Button>
         </div>
-        <Button 
-          variant={device.isOn ? "default" : "secondary"}
-          size="icon"
-          className={cn(
-            "h-8 w-8 rounded-full transition-all",
-            device.isOn && "glow-accent"
-          )}
-          onClick={() => onToggle(device.id)}
-        >
-          <Power className="w-4 h-4" />
-        </Button>
-      </div>
 
-      <div className="space-y-1 mb-4">
-        <h3 className="font-medium text-sm">{device.name}</h3>
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          {device.room}
-          {device.brand && (
-            <>
-              <span className="mx-1">•</span>
-              <span className={brandColors[device.brand] || 'text-muted-foreground'}>{device.brand}</span>
-            </>
-          )}
-        </p>
-      </div>
+        <div className="space-y-1 mb-4">
+          <h3 className="font-medium text-sm">{device.name}</h3>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            {device.room}
+            {device.brand && (
+              <>
+                <span className="mx-1">•</span>
+                <span className={brandColors[device.brand] || 'text-muted-foreground'}>{device.brand}</span>
+              </>
+            )}
+          </p>
+        </div>
 
-      {device.isOn && device.settings && (
-        <div className="space-y-3">
-          {device.type === 'ac' && device.settings.temperature !== undefined && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Temperatura</span>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => onSettingChange(device.id, 'temperature', device.settings!.temperature! - 1)}
-                >
-                  <Minus className="w-3 h-3" />
-                </Button>
-                <span className="text-lg font-semibold w-12 text-center">
-                  {device.settings.temperature}°C
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => onSettingChange(device.id, 'temperature', device.settings!.temperature! + 1)}
-                >
-                  <Plus className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {(device.type === 'tv' || device.type === 'soundbar') && device.settings.volume !== undefined && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Volume2 className="w-3 h-3" /> Volume
+        {/* AC Quick Info */}
+        {device.type === 'ac' && (
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "text-lg font-semibold",
+                device.isOn ? "text-foreground" : "text-muted-foreground"
+              )}>
+                {temperature}°C
               </span>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => onSettingChange(device.id, 'volume', Math.max(0, device.settings!.volume! - 5))}
-                >
-                  <Minus className="w-3 h-3" />
-                </Button>
-                <span className="text-lg font-semibold w-8 text-center">
-                  {device.settings.volume}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7"
-                  onClick={() => onSettingChange(device.id, 'volume', Math.min(100, device.settings!.volume! + 5))}
-                >
-                  <Plus className="w-3 h-3" />
-                </Button>
-              </div>
+              <span className="text-xs text-muted-foreground capitalize">
+                {mode === 'cool' ? 'Frio' : mode === 'heat' ? 'Quente' : mode === 'dry' ? 'Seco' : mode === 'fan' ? 'Vento' : 'Auto'}
+              </span>
             </div>
-          )}
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </div>
+        )}
 
-          {device.type === 'ac' && device.settings.mode && (
-            <div className="flex gap-2">
-              {['cool', 'heat', 'auto'].map((mode) => (
-                <Button
-                  key={mode}
-                  variant={device.settings?.mode === mode ? "default" : "secondary"}
-                  size="sm"
-                  className="flex-1 text-xs capitalize"
-                >
-                  {mode === 'cool' ? 'Frio' : mode === 'heat' ? 'Quente' : 'Auto'}
-                </Button>
-              ))}
+        {/* TV/Soundbar Volume Controls */}
+        {device.isOn && (device.type === 'tv' || device.type === 'soundbar') && device.settings?.volume !== undefined && (
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Volume2 className="w-3 h-3" /> Volume
+            </span>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSettingChange(device.id, 'volume', Math.max(0, device.settings!.volume! - 5));
+                }}
+              >
+                <Minus className="w-3 h-3" />
+              </Button>
+              <span className="text-lg font-semibold w-8 text-center">
+                {device.settings.volume}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSettingChange(device.id, 'volume', Math.min(100, device.settings!.volume! + 5));
+                }}
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* AC Control Sheet */}
+      {device.type === 'ac' && (
+        <ACControlSheet
+          open={showACControl}
+          onOpenChange={setShowACControl}
+          device={device}
+          onToggle={onToggle}
+          onSettingChange={onSettingChange}
+        />
       )}
-    </div>
+    </>
   );
 };
 
