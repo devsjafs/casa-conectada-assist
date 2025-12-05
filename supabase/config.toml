@@ -1,1 +1,7 @@
 project_id = "vlfmetfruygtdxgpaxkj"
+
+[functions.smartthings-sync]
+verify_jwt = false
+
+[functions.smartthings-control]
+verify_jwt = false

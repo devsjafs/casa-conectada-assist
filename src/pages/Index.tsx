@@ -97,10 +97,37 @@ const Index = () => {
       d.id === id ? { ...d, is_on: newState } : d
     ));
 
-    await supabase
-      .from('devices')
-      .update({ is_on: newState })
-      .eq('id', id);
+    // If device has SmartThings integration, send real command
+    if (device.integrations?.type === 'smartthings') {
+      try {
+        const { error } = await supabase.functions.invoke('smartthings-control', {
+          body: {
+            deviceId: id,
+            userId: user?.id,
+            command: { type: 'switch', value: newState }
+          }
+        });
+        
+        if (error) {
+          console.error('SmartThings control error:', error);
+          // Revert optimistic update on error
+          setDevices(prev => prev.map(d => 
+            d.id === id ? { ...d, is_on: !newState } : d
+          ));
+        }
+      } catch (err) {
+        console.error('Error calling SmartThings:', err);
+        setDevices(prev => prev.map(d => 
+          d.id === id ? { ...d, is_on: !newState } : d
+        ));
+      }
+    } else {
+      // For non-SmartThings devices, just update the database
+      await supabase
+        .from('devices')
+        .update({ is_on: newState })
+        .eq('id', id);
+    }
   };
 
   const handleBrightnessChange = async (id: string, brightness: number) => {
@@ -123,14 +150,42 @@ const Index = () => {
 
     const newSettings = { ...device.settings, [setting]: value };
     
+    // Optimistic update
     setDevices(prev => prev.map(d => 
       d.id === id ? { ...d, settings: newSettings } : d
     ));
 
-    await supabase
-      .from('devices')
-      .update({ settings: newSettings })
-      .eq('id', id);
+    // If device has SmartThings integration, send real command
+    if (device.integrations?.type === 'smartthings') {
+      let commandType = '';
+      if (setting === 'temperature') commandType = 'setTemperature';
+      else if (setting === 'mode') commandType = 'setMode';
+      else if (setting === 'fanSpeed') commandType = 'setFanSpeed';
+
+      if (commandType) {
+        try {
+          const { error } = await supabase.functions.invoke('smartthings-control', {
+            body: {
+              deviceId: id,
+              userId: user?.id,
+              command: { type: commandType, value }
+            }
+          });
+          
+          if (error) {
+            console.error('SmartThings setting error:', error);
+          }
+        } catch (err) {
+          console.error('Error calling SmartThings:', err);
+        }
+      }
+    } else {
+      // For non-SmartThings devices, just update the database
+      await supabase
+        .from('devices')
+        .update({ settings: newSettings })
+        .eq('id', id);
+    }
   };
 
   // Filter devices
