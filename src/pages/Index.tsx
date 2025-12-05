@@ -117,7 +117,7 @@ const Index = () => {
       .eq('id', id);
   };
 
-  const handleDeviceSettingChange = async (id: string, setting: string, value: number) => {
+  const handleDeviceSettingChange = async (id: string, setting: string, value: number | string) => {
     const device = devices.find(d => d.id === id);
     if (!device) return;
 
