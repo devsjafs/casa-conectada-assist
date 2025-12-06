@@ -5,9 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plug, Check, ExternalLink, Info, Unplug, Key } from 'lucide-react';
+import { Plug, Check, ExternalLink, Info, Unplug, Key, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SmartThingsTokenDialog from './SmartThingsTokenDialog';
+import PositivoTokenDialog from './PositivoTokenDialog';
+import AlexaTokenDialog from './AlexaTokenDialog';
 
 interface Integration {
   id: string;
@@ -75,6 +77,8 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
   const [integrations, setIntegrations] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<string | null>(null);
   const [smartThingsDialogOpen, setSmartThingsDialogOpen] = useState(false);
+  const [positivoDialogOpen, setPositivoDialogOpen] = useState(false);
+  const [alexaDialogOpen, setAlexaDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -100,36 +104,29 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
   const handleConnect = async (integrationType: string) => {
     if (!user) return;
     
-    // SmartThings uses PAT instead of OAuth
-    if (integrationType === 'smartthings') {
-      setSmartThingsDialogOpen(true);
-      return;
+    // Open specific dialogs for each integration
+    switch (integrationType) {
+      case 'smartthings':
+        setSmartThingsDialogOpen(true);
+        return;
+      case 'positivo':
+        setPositivoDialogOpen(true);
+        return;
+      case 'alexa':
+        setAlexaDialogOpen(true);
+        return;
+      case 'tuya':
+        toast({
+          title: 'Em desenvolvimento',
+          description: 'A integração Tuya está sendo implementada.',
+        });
+        return;
+      default:
+        toast({
+          title: 'Integração não disponível',
+          description: 'Esta integração ainda não está configurada.',
+        });
     }
-    
-    setLoading(integrationType);
-    
-    // OAuth URLs for other platforms
-    const oauthUrls: Record<string, string> = {
-      positivo: `https://api.positivocasainteligente.com.br/oauth/authorize?client_id=${import.meta.env.VITE_POSITIVO_CLIENT_ID || 'NOT_CONFIGURED'}&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth/callback/positivo')}`,
-      alexa: `https://www.amazon.com/ap/oa?client_id=${import.meta.env.VITE_ALEXA_CLIENT_ID || 'NOT_CONFIGURED'}&scope=alexa::smart_home&response_type=code&redirect_uri=${encodeURIComponent(window.location.origin + '/oauth/callback/alexa')}`,
-      tuya: `https://openapi.tuyaus.com/v1.0/token?grant_type=1`,
-    };
-
-    const url = oauthUrls[integrationType];
-    
-    if (!url || url.includes('NOT_CONFIGURED')) {
-      toast({
-        title: 'Configuração necessária',
-        description: 'O Client ID para esta integração ainda não foi configurado. Entre em contato com o administrador.',
-        variant: 'destructive',
-      });
-      setLoading(null);
-      return;
-    }
-
-    // Open OAuth in new window
-    window.open(url, '_blank', 'width=600,height=700');
-    setLoading(null);
   };
 
   const handleDisconnect = async (integrationType: string, integrationName: string) => {
@@ -274,8 +271,8 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
                             </>
                           ) : (
                             <>
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Login OAuth
+                              <LogIn className="w-4 h-4 mr-2" />
+                              Login
                             </>
                           )}
                         </Button>
@@ -312,6 +309,18 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
       <SmartThingsTokenDialog
         open={smartThingsDialogOpen}
         onOpenChange={setSmartThingsDialogOpen}
+        onSuccess={fetchIntegrations}
+      />
+      
+      <PositivoTokenDialog
+        open={positivoDialogOpen}
+        onOpenChange={setPositivoDialogOpen}
+        onSuccess={fetchIntegrations}
+      />
+      
+      <AlexaTokenDialog
+        open={alexaDialogOpen}
+        onOpenChange={setAlexaDialogOpen}
         onSuccess={fetchIntegrations}
       />
     </div>
