@@ -285,8 +285,17 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
                           onClick={() => handleConnect(integration.type)}
                           disabled={loading === integration.type}
                         >
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Reconectar
+                          {integration.type === 'smartthings' ? (
+                            <>
+                              <Key className="w-4 h-4 mr-2" />
+                              Atualizar Token
+                            </>
+                          ) : (
+                            <>
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Reconectar
+                            </>
+                          )}
                         </Button>
                         <Button 
                           variant="destructive" 
