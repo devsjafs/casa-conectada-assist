@@ -301,6 +301,7 @@ export type Database = {
         | "samsung"
         | "google_home"
         | "alexa"
+        | "tapo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -446,6 +447,7 @@ export const Constants = {
         "samsung",
         "google_home",
         "alexa",
+        "tapo",
       ],
     },
   },
