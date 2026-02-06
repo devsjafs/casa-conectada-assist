@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import SmartThingsTokenDialog from './SmartThingsTokenDialog';
 import PositivoTokenDialog from './PositivoTokenDialog';
 import AlexaTokenDialog from './AlexaTokenDialog';
+import TapoTokenDialog from './TapoTokenDialog';
 
 interface Integration {
   id: string;
@@ -23,6 +24,13 @@ interface Integration {
 }
 
 const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
+  {
+    type: 'tapo',
+    name: 'TP-Link Tapo',
+    logo: '📹',
+    description: 'Câmeras Tapo C200 e outros dispositivos via RTSP local.',
+    hasOAuth: true,
+  },
   {
     type: 'tuya',
     name: 'Tuya / Smart Life',
@@ -42,7 +50,7 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Positivo Casa Inteligente',
     logo: '🏠',
     description: 'Controle dispositivos da linha Positivo Casa Inteligente.',
-    hasOAuth: true,
+    comingSoon: true,
   },
   {
     type: 'samsung',
@@ -63,7 +71,7 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Amazon Alexa',
     logo: '🔵',
     description: 'Controle dispositivos conectados à Alexa.',
-    hasOAuth: true,
+    comingSoon: true,
   },
 ];
 
@@ -79,6 +87,7 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
   const [smartThingsDialogOpen, setSmartThingsDialogOpen] = useState(false);
   const [positivoDialogOpen, setPositivoDialogOpen] = useState(false);
   const [alexaDialogOpen, setAlexaDialogOpen] = useState(false);
+  const [tapoDialogOpen, setTapoDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -108,6 +117,9 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
     switch (integrationType) {
       case 'smartthings':
         setSmartThingsDialogOpen(true);
+        return;
+      case 'tapo':
+        setTapoDialogOpen(true);
         return;
       case 'positivo':
         setPositivoDialogOpen(true);
@@ -330,6 +342,12 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
       <AlexaTokenDialog
         open={alexaDialogOpen}
         onOpenChange={setAlexaDialogOpen}
+        onSuccess={fetchIntegrations}
+      />
+      
+      <TapoTokenDialog
+        open={tapoDialogOpen}
+        onOpenChange={setTapoDialogOpen}
         onSuccess={fetchIntegrations}
       />
     </div>

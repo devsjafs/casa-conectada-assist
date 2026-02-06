@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon } from 'lucide-react';
+import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon, Bell, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/dashboard/Header';
@@ -12,7 +12,10 @@ import QuickStats from '@/components/dashboard/QuickStats';
 import IntegrationsPage from '@/components/dashboard/IntegrationsPage';
 import AddDeviceDialog from '@/components/dashboard/AddDeviceDialog';
 import AddRoomDialog from '@/components/dashboard/AddRoomDialog';
+import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
+import FaceRecognition from '@/components/dashboard/FaceRecognition';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface Room {
   id: string;
@@ -46,6 +49,13 @@ interface CameraData {
   };
 }
 
+interface HouseholdMember {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  face_embedding: any;
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -57,6 +67,10 @@ const Index = () => {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(true);
+  const [members, setMembers] = useState<HouseholdMember[]>([]);
+  const [recognizedMemberId, setRecognizedMemberId] = useState<string | null>(null);
+  const [faceRecognitionEnabled, setFaceRecognitionEnabled] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,15 +87,17 @@ const Index = () => {
   const fetchData = async () => {
     setLoading(true);
     
-    const [roomsRes, devicesRes, camerasRes] = await Promise.all([
+    const [roomsRes, devicesRes, camerasRes, membersRes] = await Promise.all([
       supabase.from('rooms').select('*').eq('user_id', user?.id),
       supabase.from('devices').select('*, rooms(name), integrations(type, name)').eq('user_id', user?.id),
       supabase.from('cameras').select('*, devices!inner(id, name, room_id, user_id, rooms(name))').eq('devices.user_id', user?.id),
+      supabase.from('household_members').select('*').eq('user_id', user?.id),
     ]);
 
     if (roomsRes.data) setRooms(roomsRes.data);
     if (devicesRes.data) setDevices(devicesRes.data as any);
     if (camerasRes.data) setCameras(camerasRes.data as any);
+    if (membersRes.data) setMembers(membersRes.data);
     
     setLoading(false);
   };
@@ -242,10 +258,32 @@ const Index = () => {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10">
-        <Header onOpenIntegrations={() => setShowIntegrations(true)} />
+      <div className="relative z-10 flex">
+        {/* Main content */}
+        <div className={cn(
+          "flex-1 transition-all duration-300",
+          showNotifications ? "mr-80" : "mr-0"
+        )}>
+          <Header onOpenIntegrations={() => setShowIntegrations(true)} />
 
-        <main className="container mx-auto px-4 py-6 space-y-8">
+          {/* Toggle notifications button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              "fixed top-20 right-4 z-20 transition-all duration-300",
+              showNotifications && "right-[336px]"
+            )}
+            onClick={() => setShowNotifications(!showNotifications)}
+          >
+            {showNotifications ? (
+              <PanelRightClose className="w-4 h-4" />
+            ) : (
+              <PanelRightOpen className="w-4 h-4" />
+            )}
+          </Button>
+
+          <main className="container mx-auto px-4 py-6 space-y-8">
           {hasNoData ? (
             // Empty state
             <div className="flex flex-col items-center justify-center py-20">
@@ -392,7 +430,29 @@ const Index = () => {
               )}
             </>
           )}
-        </main>
+          </main>
+        </div>
+
+        {/* Notifications sidebar */}
+        <div className={cn(
+          "fixed top-0 right-0 w-80 h-screen py-4 pr-4 transition-transform duration-300 z-10",
+          showNotifications ? "translate-x-0" : "translate-x-full"
+        )}>
+          <div className="h-full flex flex-col gap-4">
+            {/* Face Recognition */}
+            <FaceRecognition
+              members={members}
+              onMemberRecognized={setRecognizedMemberId}
+              enabled={faceRecognitionEnabled}
+              onToggle={setFaceRecognitionEnabled}
+            />
+            
+            {/* Notifications Panel */}
+            <div className="flex-1 min-h-0">
+              <NotificationsPanel recognizedMemberId={recognizedMemberId} />
+            </div>
+          </div>
+        </div>
       </div>
 
       <AddDeviceDialog 
