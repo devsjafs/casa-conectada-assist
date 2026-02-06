@@ -31,15 +31,27 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
   const startCamera = useCallback(async () => {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 }
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setShowCamera(true);
+      
+      // Wait for next render to attach stream to video
+      setTimeout(() => {
+        if (videoRef.current && streamRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+          videoRef.current.play().catch(console.error);
+        }
+      }, 100);
     } catch (error) {
+      console.error('Camera error:', error);
       toast({
         title: 'Erro ao acessar câmera',
         description: 'Verifique as permissões do navegador.',
@@ -145,20 +157,18 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
           </div>
 
           <div className="space-y-2">
-            <Label>Foto (opcional, para reconhecimento facial)</Label>
+            <Label>Foto (para reconhecimento facial)</Label>
             
             {!showCamera && !capturedPhoto && (
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full h-32"
+              <div 
+                className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-accent/30 transition-colors"
                 onClick={startCamera}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <Camera className="w-8 h-8" />
-                  <span>Tirar foto</span>
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-muted-foreground" />
                 </div>
-              </Button>
+                <span className="text-sm text-muted-foreground">Clique para abrir a câmera</span>
+              </div>
             )}
 
             {showCamera && (
