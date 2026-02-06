@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon, Bell, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/dashboard/Header';
@@ -13,7 +13,7 @@ import IntegrationsPage from '@/components/dashboard/IntegrationsPage';
 import AddDeviceDialog from '@/components/dashboard/AddDeviceDialog';
 import AddRoomDialog from '@/components/dashboard/AddRoomDialog';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import FaceRecognition from '@/components/dashboard/FaceRecognition';
+import FaceRecognitionDialog from '@/components/dashboard/FaceRecognitionDialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -70,7 +70,7 @@ const Index = () => {
   const [showNotifications, setShowNotifications] = useState(true);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [recognizedMemberId, setRecognizedMemberId] = useState<string | null>(null);
-  const [faceRecognitionEnabled, setFaceRecognitionEnabled] = useState(false);
+  const [showFaceRecognition, setShowFaceRecognition] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -259,27 +259,41 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 flex">
+        {/* Notifications sidebar - LEFT SIDE */}
+        <div className={cn(
+          "fixed top-0 left-0 w-80 h-screen py-4 pl-4 transition-transform duration-300 z-10",
+          showNotifications ? "translate-x-0" : "-translate-x-full"
+        )}>
+          <div className="h-full">
+            <NotificationsPanel recognizedMemberId={recognizedMemberId} />
+          </div>
+        </div>
+
         {/* Main content */}
         <div className={cn(
           "flex-1 transition-all duration-300",
-          showNotifications ? "mr-80" : "mr-0"
+          showNotifications ? "ml-80" : "ml-0"
         )}>
-          <Header onOpenIntegrations={() => setShowIntegrations(true)} />
+          <Header 
+            onOpenIntegrations={() => setShowIntegrations(true)} 
+            onOpenFaceRecognition={() => setShowFaceRecognition(true)}
+            onOpenNotifications={() => setShowNotifications(!showNotifications)}
+          />
 
           {/* Toggle notifications button */}
           <Button
             variant="outline"
             size="icon"
             className={cn(
-              "fixed top-20 right-4 z-20 transition-all duration-300",
-              showNotifications && "right-[336px]"
+              "fixed top-20 left-4 z-20 transition-all duration-300",
+              showNotifications && "left-[336px]"
             )}
             onClick={() => setShowNotifications(!showNotifications)}
           >
             {showNotifications ? (
-              <PanelRightClose className="w-4 h-4" />
+              <PanelLeftClose className="w-4 h-4" />
             ) : (
-              <PanelRightOpen className="w-4 h-4" />
+              <PanelLeftOpen className="w-4 h-4" />
             )}
           </Button>
 
@@ -432,28 +446,16 @@ const Index = () => {
           )}
           </main>
         </div>
-
-        {/* Notifications sidebar */}
-        <div className={cn(
-          "fixed top-0 right-0 w-80 h-screen py-4 pr-4 transition-transform duration-300 z-10",
-          showNotifications ? "translate-x-0" : "translate-x-full"
-        )}>
-          <div className="h-full flex flex-col gap-4">
-            {/* Face Recognition */}
-            <FaceRecognition
-              members={members}
-              onMemberRecognized={setRecognizedMemberId}
-              enabled={faceRecognitionEnabled}
-              onToggle={setFaceRecognitionEnabled}
-            />
-            
-            {/* Notifications Panel */}
-            <div className="flex-1 min-h-0">
-              <NotificationsPanel recognizedMemberId={recognizedMemberId} />
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Face Recognition Dialog */}
+      <FaceRecognitionDialog
+        open={showFaceRecognition}
+        onOpenChange={setShowFaceRecognition}
+        members={members}
+        onMemberRecognized={setRecognizedMemberId}
+        recognizedMemberId={recognizedMemberId}
+      />
 
       <AddDeviceDialog 
         open={showAddDevice} 
