@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bell, Settings, LogOut, Home, Plug, ScanFace } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,15 +10,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import SettingsDialog from './SettingsDialog';
 
 interface HeaderProps {
   onOpenIntegrations?: () => void;
   onOpenFaceRecognition?: () => void;
   onOpenNotifications?: () => void;
+  onMembersUpdated?: () => void;
 }
 
-const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications }: HeaderProps) => {
+const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications, onMembersUpdated }: HeaderProps) => {
   const { user, signOut } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
   
   const currentTime = new Date().toLocaleTimeString('pt-BR', { 
     hour: '2-digit', 
@@ -94,7 +98,7 @@ const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications
                 <Plug className="w-4 h-4 mr-2" />
                 Integrações
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowSettings(true)}>
                 <Settings className="w-4 h-4 mr-2" />
                 Configurações
               </DropdownMenuItem>
@@ -107,6 +111,12 @@ const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications
           </DropdownMenu>
         </div>
       </div>
+
+      <SettingsDialog 
+        open={showSettings} 
+        onOpenChange={setShowSettings}
+        onMembersUpdated={onMembersUpdated}
+      />
     </header>
   );
 };
