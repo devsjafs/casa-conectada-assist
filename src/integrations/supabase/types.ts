@@ -116,6 +116,7 @@ export type Database = {
           face_embedding: Json | null
           id: string
           name: string
+          preferences: Json | null
           updated_at: string
           user_id: string
         }
@@ -125,6 +126,7 @@ export type Database = {
           face_embedding?: Json | null
           id?: string
           name: string
+          preferences?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -134,6 +136,7 @@ export type Database = {
           face_embedding?: Json | null
           id?: string
           name?: string
+          preferences?: Json | null
           updated_at?: string
           user_id?: string
         }

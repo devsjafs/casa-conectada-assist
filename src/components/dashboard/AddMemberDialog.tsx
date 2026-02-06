@@ -23,6 +23,11 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  // Preferences
+  const [musicGenres, setMusicGenres] = useState('');
+  const [sportsTeams, setSportsTeams] = useState('');
+  const [interests, setInterests] = useState('');
 
   const startCamera = useCallback(async () => {
     try {
@@ -72,13 +77,19 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
     setLoading(true);
     try {
-      // For now, we'll store the photo as avatar_url (base64)
-      // Face embedding will be computed by a separate service later
+      // Build preferences object
+      const preferences = {
+        music: musicGenres.split(',').map(s => s.trim()).filter(Boolean),
+        sports: sportsTeams.split(',').map(s => s.trim()).filter(Boolean),
+        interests: interests.split(',').map(s => s.trim()).filter(Boolean),
+      };
+
       const { error } = await supabase.from('household_members').insert({
         user_id: user.id,
         name: name.trim(),
         avatar_url: capturedPhoto,
-        face_embedding: null, // Will be computed by face recognition service
+        face_embedding: null,
+        preferences,
       });
 
       if (error) throw error;
@@ -105,6 +116,9 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
     stopCamera();
     setName('');
     setCapturedPhoto(null);
+    setMusicGenres('');
+    setSportsTeams('');
+    setInterests('');
     onOpenChange(false);
   };
 
@@ -194,6 +208,42 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Preferences section */}
+          <div className="space-y-3 pt-2 border-t">
+            <p className="text-sm font-medium text-muted-foreground">Preferências (para notificações personalizadas)</p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="music">Gêneros musicais favoritos</Label>
+              <Input
+                id="music"
+                placeholder="Ex: Rock, MPB, Sertanejo"
+                value={musicGenres}
+                onChange={(e) => setMusicGenres(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Separe por vírgulas</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sports">Times de futebol / esportes</Label>
+              <Input
+                id="sports"
+                placeholder="Ex: Flamengo, Brasil"
+                value={sportsTeams}
+                onChange={(e) => setSportsTeams(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="interests">Outros interesses</Label>
+              <Input
+                id="interests"
+                placeholder="Ex: Tecnologia, Filmes, Culinária"
+                value={interests}
+                onChange={(e) => setInterests(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 pt-4">

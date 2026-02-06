@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, User, Loader2, RefreshCw, Power, PowerOff } from 'lucide-react';
+import { Camera, User, Loader2, RefreshCw, ScanFace } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface HouseholdMember {
@@ -12,22 +12,29 @@ interface HouseholdMember {
   face_embedding: any;
 }
 
-interface FaceRecognitionProps {
+interface FaceRecognitionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   members: HouseholdMember[];
   onMemberRecognized: (memberId: string | null) => void;
-  enabled: boolean;
-  onToggle: (enabled: boolean) => void;
+  recognizedMemberId: string | null;
 }
 
-const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: FaceRecognitionProps) => {
-  const { toast } = useToast();
+const FaceRecognitionDialog = ({ 
+  open, 
+  onOpenChange, 
+  members, 
+  onMemberRecognized,
+  recognizedMemberId 
+}: FaceRecognitionDialogProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isActive, setIsActive] = useState(false);
-  const [recognizedMember, setRecognizedMember] = useState<HouseholdMember | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const recognizedMember = members.find(m => m.id === recognizedMemberId) || null;
 
   const startCamera = useCallback(async () => {
     try {
@@ -35,8 +42,8 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'user', 
-          width: { ideal: 320 },
-          height: { ideal: 240 }
+          width: { ideal: 640 },
+          height: { ideal: 480 }
         }
       });
       streamRef.current = stream;
@@ -46,14 +53,9 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
       }
       setIsActive(true);
     } catch (err) {
-      setError('Não foi possível acessar a câmera');
-      toast({
-        title: 'Erro na câmera',
-        description: 'Verifique as permissões do navegador.',
-        variant: 'destructive',
-      });
+      setError('Não foi possível acessar a câmera. Verifique as permissões.');
     }
-  }, [toast]);
+  }, []);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -64,15 +66,13 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
       videoRef.current.srcObject = null;
     }
     setIsActive(false);
-    setRecognizedMember(null);
-    onMemberRecognized(null);
-  }, [onMemberRecognized]);
+  }, []);
 
-  // Start/stop camera when enabled changes
+  // Start camera when dialog opens
   useEffect(() => {
-    if (enabled && !isActive) {
+    if (open) {
       startCamera();
-    } else if (!enabled && isActive) {
+    } else {
       stopCamera();
     }
     
@@ -81,79 +81,58 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [enabled, isActive, startCamera, stopCamera]);
+  }, [open, startCamera, stopCamera]);
 
-  // Simple face detection simulation (placeholder for real ML model)
-  // In production, this would use @huggingface/transformers for face embedding comparison
+  // Simple face detection simulation
   const detectFace = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || isProcessing || !isActive) return;
     
     setIsProcessing(true);
     
-    // Draw current frame to canvas
     const ctx = canvasRef.current.getContext('2d');
     if (ctx && videoRef.current.readyState === 4) {
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
       ctx.drawImage(videoRef.current, 0, 0);
       
-      // For now, we'll simulate face recognition by checking if members have photos
-      // Real implementation would use face-api.js or HuggingFace transformers
-      // to compare face embeddings
-      
-      // Placeholder: randomly select a member with an avatar for demo
+      // Placeholder for real face recognition
       const membersWithPhotos = members.filter(m => m.avatar_url);
       if (membersWithPhotos.length > 0) {
-        // In real implementation, we'd compare face embeddings here
-        // For demo, we'll cycle through recognized members every 5 seconds
         const randomMember = membersWithPhotos[Math.floor(Math.random() * membersWithPhotos.length)];
-        setRecognizedMember(randomMember);
         onMemberRecognized(randomMember.id);
-      } else {
-        setRecognizedMember(null);
-        onMemberRecognized(null);
       }
     }
     
     setIsProcessing(false);
   }, [members, isActive, isProcessing, onMemberRecognized]);
 
-  // Run face detection periodically
+  // Run face detection periodically when dialog is open
   useEffect(() => {
-    if (!isActive || !enabled) return;
+    if (!isActive || !open) return;
     
-    const interval = setInterval(detectFace, 5000); // Check every 5 seconds
+    const interval = setInterval(detectFace, 3000);
     return () => clearInterval(interval);
-  }, [isActive, enabled, detectFace]);
+  }, [isActive, open, detectFace]);
+
+  const handleClose = () => {
+    stopCamera();
+    onOpenChange(false);
+  };
 
   return (
-    <div className="glass rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Camera className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-sm">Reconhecimento Facial</h3>
-        </div>
-        <Button
-          variant={enabled ? "default" : "outline"}
-          size="sm"
-          onClick={() => onToggle(!enabled)}
-        >
-          {enabled ? (
-            <>
-              <Power className="w-4 h-4 mr-1" />
-              Ativo
-            </>
-          ) : (
-            <>
-              <PowerOff className="w-4 h-4 mr-1" />
-              Inativo
-            </>
-          )}
-        </Button>
-      </div>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ScanFace className="w-5 h-5 text-primary" />
+            Reconhecimento Facial
+          </DialogTitle>
+          <DialogDescription>
+            Posicione-se em frente à câmera para identificação automática.
+          </DialogDescription>
+        </DialogHeader>
 
-      {enabled && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="relative aspect-video rounded-lg overflow-hidden bg-black/50">
             <video
               ref={videoRef}
@@ -167,16 +146,17 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
             
             {isProcessing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}
 
             {error && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-                <div className="text-center">
-                  <p className="text-sm text-destructive mb-2">{error}</p>
+                <div className="text-center p-4">
+                  <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-destructive mb-3">{error}</p>
                   <Button size="sm" variant="outline" onClick={startCamera}>
-                    <RefreshCw className="w-4 h-4 mr-1" />
+                    <RefreshCw className="w-4 h-4 mr-2" />
                     Tentar novamente
                   </Button>
                 </div>
@@ -185,16 +165,16 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
 
             {!isActive && !error && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             )}
           </div>
 
           {/* Recognition status */}
           <div className={cn(
-            "p-3 rounded-lg border transition-colors",
+            "p-4 rounded-lg border transition-colors",
             recognizedMember 
-              ? "bg-success/10 border-success/30" 
+              ? "bg-emerald-500/10 border-emerald-500/30" 
               : "bg-muted/30 border-border/30"
           )}>
             {recognizedMember ? (
@@ -203,44 +183,51 @@ const FaceRecognition = ({ members, onMemberRecognized, enabled, onToggle }: Fac
                   <img 
                     src={recognizedMember.avatar_url} 
                     alt={recognizedMember.name}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-12 h-12 rounded-full object-cover"
                     style={{ transform: 'scaleX(-1)' }}
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary" />
                   </div>
                 )}
-                <div>
-                  <p className="font-medium text-sm">Olá, {recognizedMember.name}!</p>
-                  <p className="text-xs text-muted-foreground">Mostrando suas notificações</p>
+                <div className="flex-1">
+                  <p className="font-semibold">Olá, {recognizedMember.name}!</p>
+                  <p className="text-sm text-muted-foreground">Suas notificações serão exibidas</p>
                 </div>
-                <Badge variant="secondary" className="ml-auto bg-success/20 text-success">
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                   Reconhecido
                 </Badge>
               </div>
             ) : (
               <div className="flex items-center gap-3 text-muted-foreground">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                  <User className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-medium text-sm">Aguardando...</p>
-                  <p className="text-xs">Posicione-se em frente à câmera</p>
+                  <p className="font-medium">Aguardando identificação...</p>
+                  <p className="text-sm">Posicione-se em frente à câmera</p>
                 </div>
               </div>
             )}
           </div>
-        </div>
-      )}
 
-      {!enabled && (
-        <p className="text-xs text-muted-foreground text-center py-2">
-          Ative para detectar automaticamente quem está em frente ao tablet
-        </p>
-      )}
-    </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => onMemberRecognized(null)}
+            >
+              Limpar
+            </Button>
+            <Button className="flex-1" onClick={handleClose}>
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default FaceRecognition;
+export default FaceRecognitionDialog;

@@ -1,4 +1,4 @@
-import { Bell, Settings, LogOut, Home, Plug } from 'lucide-react';
+import { Bell, Settings, LogOut, Home, Plug, ScanFace } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -12,9 +12,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface HeaderProps {
   onOpenIntegrations?: () => void;
+  onOpenFaceRecognition?: () => void;
+  onOpenNotifications?: () => void;
 }
 
-const Header = ({ onOpenIntegrations }: HeaderProps) => {
+const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications }: HeaderProps) => {
   const { user, signOut } = useAuth();
   
   const currentTime = new Date().toLocaleTimeString('pt-BR', { 
@@ -61,9 +63,16 @@ const Header = ({ onOpenIntegrations }: HeaderProps) => {
               <Plug className="w-5 h-5" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-          </Button>
+          {onOpenFaceRecognition && (
+            <Button variant="ghost" size="icon" onClick={onOpenFaceRecognition} title="Reconhecimento Facial">
+              <ScanFace className="w-5 h-5" />
+            </Button>
+          )}
+          {onOpenNotifications && (
+            <Button variant="ghost" size="icon" onClick={onOpenNotifications} title="Notificações">
+              <Bell className="w-5 h-5" />
+            </Button>
+          )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
