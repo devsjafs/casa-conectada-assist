@@ -106,21 +106,18 @@ const FaceRecognitionDialog = ({
     setIsProcessing(false);
   }, [members, isActive, isProcessing, onMemberRecognized]);
 
-  // Run face detection periodically when dialog is open
+  // Run face detection periodically and auto-recognize
   useEffect(() => {
     if (!isActive || !open) return;
     
-    const interval = setInterval(detectFace, 3000);
+    const interval = setInterval(() => {
+      detectFace();
+    }, 2000);
     return () => clearInterval(interval);
   }, [isActive, open, detectFace]);
 
-  const handleClose = () => {
-    stopCamera();
-    onOpenChange(false);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -128,7 +125,7 @@ const FaceRecognitionDialog = ({
             Reconhecimento Facial
           </DialogTitle>
           <DialogDescription>
-            Posicione-se em frente à câmera para identificação automática.
+            O sistema detecta automaticamente quem está na frente da câmera.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,8 +142,11 @@ const FaceRecognitionDialog = ({
             <canvas ref={canvasRef} className="hidden" />
             
             {isProcessing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="absolute top-2 right-2">
+                <div className="flex items-center gap-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Analisando...
+                </div>
               </div>
             )}
 
@@ -193,7 +193,7 @@ const FaceRecognitionDialog = ({
                 )}
                 <div className="flex-1">
                   <p className="font-semibold">Olá, {recognizedMember.name}!</p>
-                  <p className="text-sm text-muted-foreground">Suas notificações serão exibidas</p>
+                  <p className="text-sm text-muted-foreground">Notificações personalizadas ativadas</p>
                 </div>
                 <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                   Reconhecido
@@ -212,18 +212,12 @@ const FaceRecognitionDialog = ({
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1"
-              onClick={() => onMemberRecognized(null)}
-            >
-              Limpar
-            </Button>
-            <Button className="flex-1" onClick={handleClose}>
-              Confirmar
-            </Button>
-          </div>
+          <p className="text-xs text-center text-muted-foreground">
+            {recognizedMember 
+              ? "A câmera continuará detectando. Quando outra pessoa aparecer, as notificações serão atualizadas automaticamente."
+              : "Se ninguém for identificado, as notificações gerais serão exibidas."
+            }
+          </p>
         </div>
       </DialogContent>
     </Dialog>

@@ -278,6 +278,7 @@ const Index = () => {
             onOpenIntegrations={() => setShowIntegrations(true)} 
             onOpenFaceRecognition={() => setShowFaceRecognition(true)}
             onOpenNotifications={() => setShowNotifications(!showNotifications)}
+            onMembersUpdated={fetchData}
           />
 
           {/* Toggle notifications button */}
