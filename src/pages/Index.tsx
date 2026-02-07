@@ -13,7 +13,6 @@ import IntegrationsPage from '@/components/dashboard/IntegrationsPage';
 import AddDeviceDialog from '@/components/dashboard/AddDeviceDialog';
 import AddRoomDialog from '@/components/dashboard/AddRoomDialog';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import FaceRecognitionDialog from '@/components/dashboard/FaceRecognitionDialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -70,7 +69,6 @@ const Index = () => {
   const [showNotifications, setShowNotifications] = useState(true);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [recognizedMemberId, setRecognizedMemberId] = useState<string | null>(null);
-  const [showFaceRecognition, setShowFaceRecognition] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -108,12 +106,10 @@ const Index = () => {
 
     const newState = !device.is_on;
     
-    // Optimistic update
     setDevices(prev => prev.map(d => 
       d.id === id ? { ...d, is_on: newState } : d
     ));
 
-    // If device has SmartThings integration, send real command
     if (device.integrations?.type === 'smartthings') {
       try {
         const { error } = await supabase.functions.invoke('smartthings-control', {
@@ -126,7 +122,6 @@ const Index = () => {
         
         if (error) {
           console.error('SmartThings control error:', error);
-          // Revert optimistic update on error
           setDevices(prev => prev.map(d => 
             d.id === id ? { ...d, is_on: !newState } : d
           ));
@@ -138,7 +133,6 @@ const Index = () => {
         ));
       }
     } else {
-      // For non-SmartThings devices, just update the database
       await supabase
         .from('devices')
         .update({ is_on: newState })
@@ -166,12 +160,10 @@ const Index = () => {
 
     const newSettings = { ...device.settings, [setting]: value };
     
-    // Optimistic update
     setDevices(prev => prev.map(d => 
       d.id === id ? { ...d, settings: newSettings } : d
     ));
 
-    // If device has SmartThings integration, send real command
     if (device.integrations?.type === 'smartthings') {
       let commandType = '';
       if (setting === 'temperature') commandType = 'setTemperature';
@@ -196,7 +188,6 @@ const Index = () => {
         }
       }
     } else {
-      // For non-SmartThings devices, just update the database
       await supabase
         .from('devices')
         .update({ settings: newSettings })
@@ -204,7 +195,6 @@ const Index = () => {
     }
   };
 
-  // Filter devices
   const lights = devices.filter(d => d.type === 'light');
   const remoteDevices = devices.filter(d => ['ac', 'tv', 'soundbar', 'fan'].includes(d.type));
 
@@ -239,7 +229,7 @@ const Index = () => {
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10">
-          <Header />
+          <Header onMembersUpdated={fetchData} />
           <main className="container mx-auto px-4 py-6">
             <IntegrationsPage onBack={() => setShowIntegrations(false)} />
           </main>
@@ -252,20 +242,23 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Ambient glow effect */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 flex">
-        {/* Notifications sidebar - LEFT SIDE */}
+        {/* Notifications sidebar - LEFT SIDE with always-on camera */}
         <div className={cn(
           "fixed top-0 left-0 w-80 h-screen py-4 pl-4 transition-transform duration-300 z-10",
           showNotifications ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="h-full">
-            <NotificationsPanel recognizedMemberId={recognizedMemberId} />
+            <NotificationsPanel 
+              members={members}
+              recognizedMemberId={recognizedMemberId} 
+              onMemberRecognized={setRecognizedMemberId}
+            />
           </div>
         </div>
 
@@ -276,12 +269,10 @@ const Index = () => {
         )}>
           <Header 
             onOpenIntegrations={() => setShowIntegrations(true)} 
-            onOpenFaceRecognition={() => setShowFaceRecognition(true)}
             onOpenNotifications={() => setShowNotifications(!showNotifications)}
             onMembersUpdated={fetchData}
           />
 
-          {/* Toggle notifications button */}
           <Button
             variant="outline"
             size="icon"
@@ -300,7 +291,6 @@ const Index = () => {
 
           <main className="container mx-auto px-4 py-6 space-y-8">
           {hasNoData ? (
-            // Empty state
             <div className="flex flex-col items-center justify-center py-20">
               <div className="p-6 rounded-2xl bg-primary/10 mb-6">
                 <HomeIcon className="w-16 h-16 text-primary" />
@@ -322,10 +312,8 @@ const Index = () => {
             </div>
           ) : (
             <>
-              {/* Quick Stats */}
               <QuickStats devicesCount={devices.length} onlineCount={devices.filter(d => d.is_on).length} />
 
-              {/* Room Selector */}
               <section className="flex items-center justify-between">
                 <RoomSelector 
                   rooms={rooms} 
@@ -344,7 +332,6 @@ const Index = () => {
                 </div>
               </section>
 
-              {/* Cameras Section */}
               {filteredCameras.length > 0 && (
                 <section>
                   <div className="flex items-center gap-2 mb-4">
@@ -371,7 +358,6 @@ const Index = () => {
                 </section>
               )}
 
-              {/* Lights Section */}
               {filteredLights.length > 0 && (
                 <section>
                   <div className="flex items-center gap-2 mb-4">
@@ -402,7 +388,6 @@ const Index = () => {
                 </section>
               )}
 
-              {/* Remote Devices Section */}
               {filteredDevices.length > 0 && (
                 <section>
                   <div className="flex items-center gap-2 mb-4">
@@ -433,7 +418,6 @@ const Index = () => {
                 </section>
               )}
 
-              {/* Empty sections prompt */}
               {devices.length === 0 && (
                 <div className="text-center py-12 glass rounded-xl">
                   <p className="text-muted-foreground mb-4">Nenhum dispositivo cadastrado ainda</p>
@@ -448,15 +432,6 @@ const Index = () => {
           </main>
         </div>
       </div>
-
-      {/* Face Recognition Dialog */}
-      <FaceRecognitionDialog
-        open={showFaceRecognition}
-        onOpenChange={setShowFaceRecognition}
-        members={members}
-        onMemberRecognized={setRecognizedMemberId}
-        recognizedMemberId={recognizedMemberId}
-      />
 
       <AddDeviceDialog 
         open={showAddDevice} 
