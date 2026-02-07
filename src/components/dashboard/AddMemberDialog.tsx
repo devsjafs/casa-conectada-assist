@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, User, Loader2 } from 'lucide-react';
+import { Camera, User, Loader2, Brain } from 'lucide-react';
+import { useFaceRecognition } from '@/hooks/useFaceRecognition';
 
 interface AddMemberDialogProps {
   open: boolean;
@@ -17,10 +18,13 @@ interface AddMemberDialogProps {
 const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { modelReady, modelLoading, computeEmbedding } = useFaceRecognition();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [computingEmbedding, setComputingEmbedding] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [faceEmbedding, setFaceEmbedding] = useState<number[] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
@@ -31,7 +35,6 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
   const startCamera = useCallback(async () => {
     try {
-      // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -43,7 +46,6 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
       streamRef.current = stream;
       setShowCamera(true);
       
-      // Wait for next render to attach stream to video
       setTimeout(() => {
         if (videoRef.current && streamRef.current) {
           videoRef.current.srcObject = streamRef.current;
@@ -68,20 +70,49 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
     setShowCamera(false);
   }, []);
 
-  const capturePhoto = useCallback(() => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedPhoto(dataUrl);
-        stopCamera();
+  const capturePhoto = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setCapturedPhoto(dataUrl);
+    stopCamera();
+
+    // Compute face embedding from the captured photo
+    if (modelReady) {
+      setComputingEmbedding(true);
+      try {
+        const embedding = await computeEmbedding(dataUrl);
+        setFaceEmbedding(embedding);
+        if (embedding) {
+          toast({
+            title: 'Embedding facial gerado!',
+            description: 'A IA processou a foto para reconhecimento.',
+          });
+        } else {
+          toast({
+            title: 'Aviso',
+            description: 'Não foi possível gerar o embedding. O membro será salvo sem reconhecimento facial.',
+            variant: 'destructive',
+          });
+        }
+      } catch {
+        toast({
+          title: 'Aviso',
+          description: 'Erro ao processar foto. O membro será salvo sem reconhecimento facial.',
+          variant: 'destructive',
+        });
+      } finally {
+        setComputingEmbedding(false);
       }
     }
-  }, [stopCamera]);
+  }, [stopCamera, modelReady, computeEmbedding, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +120,6 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
     setLoading(true);
     try {
-      // Build preferences object
       const preferences = {
         music: musicGenres.split(',').map(s => s.trim()).filter(Boolean),
         sports: sportsTeams.split(',').map(s => s.trim()).filter(Boolean),
@@ -100,7 +130,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
         user_id: user.id,
         name: name.trim(),
         avatar_url: capturedPhoto,
-        face_embedding: null,
+        face_embedding: faceEmbedding,
         preferences,
       });
 
@@ -108,7 +138,9 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
       toast({
         title: 'Membro adicionado!',
-        description: `${name} foi cadastrado com sucesso.`,
+        description: faceEmbedding 
+          ? `${name} foi cadastrado com reconhecimento facial ativo.`
+          : `${name} foi cadastrado (sem reconhecimento facial).`,
       });
 
       onMemberAdded();
@@ -128,6 +160,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
     stopCamera();
     setName('');
     setCapturedPhoto(null);
+    setFaceEmbedding(null);
     setMusicGenres('');
     setSportsTeams('');
     setInterests('');
@@ -159,6 +192,14 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
           <div className="space-y-2">
             <Label>Foto (para reconhecimento facial)</Label>
             
+            {/* Model loading indicator */}
+            {modelLoading && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+                <Brain className="w-4 h-4 text-primary animate-pulse" />
+                Carregando modelo de IA para reconhecimento...
+              </div>
+            )}
+            
             {!showCamera && !capturedPhoto && (
               <div 
                 className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-accent/30 transition-colors"
@@ -173,7 +214,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
             {showCamera && (
               <div className="space-y-2">
-                <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                <div className="relative rounded-lg overflow-hidden bg-background aspect-video">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -204,6 +245,19 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
                     className="w-full h-full object-cover"
                     style={{ transform: 'scaleX(-1)' }}
                   />
+                  {computingEmbedding && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                      <div className="flex items-center gap-2 bg-background/90 px-4 py-2 rounded-full">
+                        <Brain className="w-4 h-4 text-primary animate-pulse" />
+                        <span className="text-sm">Processando rosto...</span>
+                      </div>
+                    </div>
+                  )}
+                  {faceEmbedding && !computingEmbedding && (
+                    <div className="absolute bottom-2 right-2 bg-primary/90 text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+                      ✓ Rosto processado
+                    </div>
+                  )}
                 </div>
                 <Button 
                   type="button" 
@@ -211,6 +265,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
                   className="w-full"
                   onClick={() => {
                     setCapturedPhoto(null);
+                    setFaceEmbedding(null);
                     startCamera();
                   }}
                 >
@@ -260,7 +315,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
             <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()} className="flex-1">
+            <Button type="submit" disabled={loading || computingEmbedding || !name.trim()} className="flex-1">
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (

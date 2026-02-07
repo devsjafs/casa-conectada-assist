@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ScanFace, User, Loader2 } from 'lucide-react';
+import { ScanFace, User, Loader2, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { useFaceRecognition } from '@/hooks/useFaceRecognition';
 
 interface HouseholdMember {
   id: string;
@@ -16,6 +16,9 @@ interface FaceRecognitionBannerProps {
   recognizedMemberId: string | null;
 }
 
+const BUFFER_SIZE = 3;
+const DETECTION_INTERVAL = 5000; // 5 seconds between detections
+
 const FaceRecognitionBanner = ({ 
   members, 
   onMemberRecognized,
@@ -24,9 +27,13 @@ const FaceRecognitionBanner = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const processingRef = useRef(false);
+  const detectionBufferRef = useRef<(string | null)[]>([]);
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(false);
+
+  const { modelReady, modelLoading, modelError, computeEmbedding, findBestMatch } = useFaceRecognition();
 
   const recognizedMember = members.find(m => m.id === recognizedMemberId) || null;
 
@@ -61,42 +68,95 @@ const FaceRecognitionBanner = ({
     };
   }, [startCamera]);
 
-  // Face detection simulation - runs continuously
+  // Real face detection using ViT embeddings
   const detectFace = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isProcessing || !isActive) return;
-    
-    setIsProcessing(true);
-    const ctx = canvasRef.current.getContext('2d');
-    if (ctx && videoRef.current.readyState === 4) {
-      canvasRef.current.width = videoRef.current.videoWidth;
-      canvasRef.current.height = videoRef.current.videoHeight;
-      ctx.drawImage(videoRef.current, 0, 0);
-      
-      // Placeholder: randomly pick a member or null (simulating no one detected)
-      const membersWithPhotos = members.filter(m => m.avatar_url);
-      if (membersWithPhotos.length > 0) {
-        // 70% chance to detect someone, 30% chance no one
-        if (Math.random() > 0.3) {
-          const member = membersWithPhotos[Math.floor(Math.random() * membersWithPhotos.length)];
-          onMemberRecognized(member.id);
-        } else {
-          onMemberRecognized(null);
-        }
-      } else {
+    if (
+      !videoRef.current || 
+      !canvasRef.current || 
+      processingRef.current || 
+      !isActive || 
+      !modelReady
+    ) return;
+
+    // Check if any member has embeddings
+    const membersWithEmbeddings = members.filter(
+      m => m.face_embedding && Array.isArray(m.face_embedding) && m.face_embedding.length > 0
+    );
+
+    if (membersWithEmbeddings.length === 0) {
+      // No embeddings to compare against
+      if (recognizedMemberId !== null) {
         onMemberRecognized(null);
       }
+      return;
     }
-    setIsProcessing(false);
-  }, [members, isActive, isProcessing, onMemberRecognized]);
 
-  // Continuous detection every 3 seconds
+    processingRef.current = true;
+    setIsProcessing(true);
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (video.readyState !== 4) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+      const embedding = await computeEmbedding(dataUrl);
+      if (!embedding) return;
+
+      const match = findBestMatch(embedding, membersWithEmbeddings);
+      const detectedId = match ? match.memberId : null;
+
+      // Add to stability buffer
+      detectionBufferRef.current.push(detectedId);
+      if (detectionBufferRef.current.length > BUFFER_SIZE) {
+        detectionBufferRef.current.shift();
+      }
+
+      // Only change if we have enough consistent readings
+      if (detectionBufferRef.current.length >= 2) {
+        const counts = new Map<string | null, number>();
+        for (const id of detectionBufferRef.current) {
+          counts.set(id, (counts.get(id) || 0) + 1);
+        }
+        
+        let stableId: string | null = null;
+        let maxCount = 0;
+        for (const [id, count] of counts) {
+          if (count > maxCount) {
+            maxCount = count;
+            stableId = id;
+          }
+        }
+
+        // Need at least 2 consistent readings to change
+        if (maxCount >= 2 && stableId !== recognizedMemberId) {
+          console.log(`[FaceRecognition] Stable detection: ${stableId ? members.find(m => m.id === stableId)?.name : 'Ninguém'} (${maxCount}/${BUFFER_SIZE})`);
+          onMemberRecognized(stableId);
+        }
+      }
+    } catch (err) {
+      console.error('[FaceRecognition] Detection error:', err);
+    } finally {
+      processingRef.current = false;
+      setIsProcessing(false);
+    }
+  }, [members, isActive, modelReady, computeEmbedding, findBestMatch, recognizedMemberId, onMemberRecognized]);
+
+  // Continuous detection every 5 seconds
   useEffect(() => {
-    if (!isActive) return;
-    const interval = setInterval(detectFace, 3000);
+    if (!isActive || !modelReady) return;
+    const interval = setInterval(detectFace, DETECTION_INTERVAL);
     return () => clearInterval(interval);
-  }, [isActive, detectFace]);
+  }, [isActive, modelReady, detectFace]);
 
-  if (error) return null; // Hide if camera fails
+  if (error) return null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-b border-border/30">
@@ -112,19 +172,28 @@ const FaceRecognitionBanner = ({
         />
         <canvas ref={canvasRef} className="hidden" />
         {isProcessing && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
           </div>
         )}
       </div>
 
       {/* Status */}
       <div className="flex-1 min-w-0">
-        {recognizedMember ? (
+        {modelLoading ? (
           <div className="flex items-center gap-2">
-            <ScanFace className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Brain className="w-4 h-4 text-primary animate-pulse shrink-0" />
+            <span className="text-xs text-muted-foreground truncate">Carregando modelo IA...</span>
+          </div>
+        ) : modelError ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-destructive truncate">{modelError}</span>
+          </div>
+        ) : recognizedMember ? (
+          <div className="flex items-center gap-2">
+            <ScanFace className="w-4 h-4 text-primary shrink-0" />
             <span className="text-sm font-medium truncate">{recognizedMember.name}</span>
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs shrink-0">
+            <Badge variant="secondary" className="text-xs shrink-0">
               Ativo
             </Badge>
           </div>
