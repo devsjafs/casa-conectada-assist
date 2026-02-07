@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.smartthings-control]
 verify_jwt = false
+
+[functions.generate-notifications]
+verify_jwt = false

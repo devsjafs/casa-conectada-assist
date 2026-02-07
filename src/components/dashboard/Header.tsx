@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Settings, LogOut, Home, Plug, ScanFace } from 'lucide-react';
+import { Bell, Settings, LogOut, Home, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -14,12 +14,11 @@ import SettingsDialog from './SettingsDialog';
 
 interface HeaderProps {
   onOpenIntegrations?: () => void;
-  onOpenFaceRecognition?: () => void;
   onOpenNotifications?: () => void;
   onMembersUpdated?: () => void;
 }
 
-const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications, onMembersUpdated }: HeaderProps) => {
+const Header = ({ onOpenIntegrations, onOpenNotifications, onMembersUpdated }: HeaderProps) => {
   const { user, signOut } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   
@@ -65,11 +64,6 @@ const Header = ({ onOpenIntegrations, onOpenFaceRecognition, onOpenNotifications
           {onOpenIntegrations && (
             <Button variant="ghost" size="icon" onClick={onOpenIntegrations} title="Integrações">
               <Plug className="w-5 h-5" />
-            </Button>
-          )}
-          {onOpenFaceRecognition && (
-            <Button variant="ghost" size="icon" onClick={onOpenFaceRecognition} title="Reconhecimento Facial">
-              <ScanFace className="w-5 h-5" />
             </Button>
           )}
           {onOpenNotifications && (
