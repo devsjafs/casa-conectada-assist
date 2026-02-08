@@ -10,11 +10,10 @@ const corsHeaders = {
 const RSS_FEEDS: Record<string, string[]> = {
   general: [
     "https://g1.globo.com/rss/g1/",
-    "https://g1.globo.com/rss/g1/tecnologia/",
   ],
   sports: [
-    "https://ge.globo.com/rss/futebol/",
-    "https://ge.globo.com/rss/futebol/futebol-internacional/",
+    "https://www.gazetaesportiva.com/feed/",
+    "https://www.gazetaesportiva.com/futebol/futebol-internacional/feed/",
   ],
   tech: [
     "https://g1.globo.com/rss/g1/tecnologia/",
@@ -22,6 +21,24 @@ const RSS_FEEDS: Record<string, string[]> = {
   entertainment: [
     "https://g1.globo.com/rss/g1/pop-arte/",
   ],
+};
+
+// Map team names to their Gazeta Esportiva RSS feed URLs
+const TEAM_FEEDS: Record<string, string> = {
+  "Flamengo": "https://www.gazetaesportiva.com/times/flamengo/feed/",
+  "Corinthians": "https://www.gazetaesportiva.com/times/corinthians/feed/",
+  "Palmeiras": "https://www.gazetaesportiva.com/times/palmeiras/feed/",
+  "São Paulo": "https://www.gazetaesportiva.com/times/sao-paulo/feed/",
+  "Vasco": "https://www.gazetaesportiva.com/times/vasco/feed/",
+  "Botafogo": "https://www.gazetaesportiva.com/times/botafogo/feed/",
+  "Fluminense": "https://www.gazetaesportiva.com/times/fluminense/feed/",
+  "Grêmio": "https://www.gazetaesportiva.com/times/gremio/feed/",
+  "Internacional": "https://www.gazetaesportiva.com/times/inter-rs/feed/",
+  "Cruzeiro": "https://www.gazetaesportiva.com/times/cruzeiro/feed/",
+  "Atlético-MG": "https://www.gazetaesportiva.com/times/atletico-mg/feed/",
+  "Santos": "https://www.gazetaesportiva.com/times/santos/feed/",
+  "Bahia": "https://www.gazetaesportiva.com/times/bahia/feed/",
+  "Athletico-PR": "https://www.gazetaesportiva.com/times/atletico-pr/feed/",
 };
 
 interface RssItem {
@@ -91,23 +108,34 @@ async function fetchFeed(url: string, category: string): Promise<RssItem[]> {
 function selectFeeds(preferences: any): { url: string; category: string }[] {
   const feeds: { url: string; category: string }[] = [];
   
-  // Always include general news
-  RSS_FEEDS.general.forEach(url => feeds.push({ url, category: "geral" }));
-  
   if (preferences) {
     if (preferences.sports?.length) {
+      // Add team-specific feeds first
+      for (const team of preferences.sports) {
+        const teamUrl = TEAM_FEEDS[team];
+        if (teamUrl) {
+          feeds.push({ url: teamUrl, category: team });
+        }
+      }
+      // Also add general sports feed
       RSS_FEEDS.sports.forEach(url => feeds.push({ url, category: "esportes" }));
     }
     if (preferences.music?.length || preferences.interests?.some((i: string) => 
-      /música|entretenimento|show|cinema|filme|série/i.test(i)
+      /música|entretenimento|show|cinema|filme|série|maquiagem|moda/i.test(i)
     )) {
       RSS_FEEDS.entertainment.forEach(url => feeds.push({ url, category: "entretenimento" }));
     }
-    if (preferences.interests?.some((i: string) => /tecnologia|tech|games|jogos|programação/i.test(i))) {
+    if (preferences.interests?.some((i: string) => /tecnologia|tech|games|jogos|programação|inteligência artificial/i.test(i))) {
       RSS_FEEDS.tech.forEach(url => feeds.push({ url, category: "tecnologia" }));
     }
+    
+    // Only add general if no specific feeds were matched
+    if (feeds.length === 0) {
+      RSS_FEEDS.general.forEach(url => feeds.push({ url, category: "geral" }));
+    }
   } else {
-    // No preferences = fetch everything
+    // No preferences at all = fetch everything
+    RSS_FEEDS.general.forEach(url => feeds.push({ url, category: "geral" }));
     RSS_FEEDS.sports.forEach(url => feeds.push({ url, category: "esportes" }));
     RSS_FEEDS.entertainment.forEach(url => feeds.push({ url, category: "entretenimento" }));
     RSS_FEEDS.tech.forEach(url => feeds.push({ url, category: "tecnologia" }));
@@ -155,16 +183,11 @@ serve(async (req) => {
     const allNews = feedResults.flat();
     console.log(`Fetched ${allNews.length} news items total`);
 
-    // Filter to recent news (last 48h)
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const recentNews = allNews.filter(item => {
-      if (!item.pubDate) return true; // include if no date
-      const pubDate = new Date(item.pubDate);
-      return pubDate >= cutoff;
-    });
+    // RSS feeds already return recent content, so just use all items
+    const recentNews = allNews.slice(0, 30);
+    console.log(`Using ${recentNews.length} news items for AI selection`);
 
-    console.log(`${recentNews.length} recent news items (last 48h)`);
+    const now = new Date();
 
     // 2. Build context for AI with REAL news data
     const newsContext = recentNews.slice(0, 30).map(item => 
@@ -190,10 +213,10 @@ REGRAS OBRIGATÓRIAS:
 - Você DEVE selecionar notícias APENAS da lista de notícias reais fornecida abaixo
 - NÃO invente notícias. Use SOMENTE as manchetes reais fornecidas
 - Resuma cada notícia em título curto (max 60 chars) e descrição breve (max 120 chars)
-- Se a pessoa tem preferências, priorize notícias relacionadas aos interesses dela
-- Se houver notícias do time de futebol da pessoa, SEMPRE inclua
+- PRIORIDADE MÁXIMA: Se a pessoa tem preferências específicas (ex: um time de futebol), TODAS ou quase todas as notícias devem ser sobre esses interesses
+- Se a pessoa só gosta de futebol/um time, dê 5 notícias de futebol, não misture com outros assuntos
+- Se a pessoa tem poucos interesses, foque neles em vez de diversificar
 - NÃO fale sobre economia de energia, automação ou configurações da casa
-- Escolha as 5 notícias mais relevantes e interessantes
 - Para cada notificação, escolha um tipo: info (geral), alert (urgente/importante), reminder (lembrete), task (ação)
 - Use linguagem natural brasileira, como manchetes de portal de notícias`;
 
@@ -205,7 +228,9 @@ Data: ${today}, ${hour}.
 NOTÍCIAS REAIS DISPONÍVEIS:
 ${newsContext || "Nenhuma notícia disponível no momento."}
 
-Escolha as que mais se encaixam nos interesses da pessoa. Se não houver notícias sobre os interesses específicos, escolha as mais importantes do dia.`
+IMPORTANTE: ${memberName} tem interesse APENAS em: ${preferencesText}. 
+Foque TODAS as 5 notícias nesses interesses. NÃO inclua notícias de assuntos que não estão nas preferências.
+Se não houver 5 notícias dos interesses, complete com as que tiver, mas priorize os interesses.`
       : `Selecione as 5 notícias mais importantes e variadas para HOJE (${today}, ${hour}).
 
 NOTÍCIAS REAIS DISPONÍVEIS:
