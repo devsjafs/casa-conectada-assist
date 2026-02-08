@@ -50,7 +50,7 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Positivo Casa Inteligente',
     logo: '🏠',
     description: 'Controle dispositivos da linha Positivo Casa Inteligente.',
-    comingSoon: true,
+    hasOAuth: true,
   },
   {
     type: 'samsung',
@@ -71,7 +71,7 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     name: 'Amazon Alexa',
     logo: '🔵',
     description: 'Controle dispositivos conectados à Alexa.',
-    comingSoon: true,
+    hasOAuth: true,
   },
 ];
 
@@ -223,7 +223,7 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {integrationsList.map((integration) => {
           const isConnected = integrations[integration.type];
           
