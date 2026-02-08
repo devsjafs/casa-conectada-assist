@@ -45,27 +45,39 @@ serve(async (req) => {
       preferencesText = parts.join(". ");
     }
 
-    const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const now = new Date();
+    const today = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const hour = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
-    const systemPrompt = `Você é um assistente de casa inteligente que funciona como um feed de notícias personalizado.
-A data de hoje é: ${today}.
-Gere exatamente 5 notificações RELEVANTES baseadas nos interesses da pessoa. 
-REGRAS IMPORTANTES:
+    const systemPrompt = `Você é um assistente de casa inteligente que funciona como um feed de notícias personalizado e ATUALIZADO.
+DADOS TEMPORAIS OBRIGATÓRIOS:
+- Data de HOJE: ${today}
+- Hora atual (Brasília): ${hour}
+- Ano atual: ${now.getFullYear()}
+
+Gere exatamente 5 notificações que pareçam NOTÍCIAS FRESCAS DE HOJE.
+
+REGRAS CRÍTICAS:
+- TODAS as notícias devem ser contextualizadas como acontecendo HOJE (${today}) ou nesta semana
+- Use verbos no presente ou passado recente: "anuncia", "confirmou hoje", "acaba de", "nesta manhã", "nesta tarde"
+- NÃO use datas genéricas ou antigas. Referencie sempre "hoje", "agora", "nesta semana", "amanhã"
 - NÃO fale sobre economia de energia, dicas de automação ou configurações da casa
-- Foque em NOTÍCIAS REAIS do dia: esportes, música, entretenimento, tecnologia, etc.
-- Se a pessoa gosta de um time de futebol, dê notícias sobre esse time (resultados, próximos jogos, contratações)
-- Se gosta de música, fale sobre lançamentos, shows, novidades do gênero
-- Cada notificação deve ser como uma manchete de jornal personalizada
-- Seja específico e realista, como se fosse um feed do Google News personalizado
+- Foque em temas ATUAIS e REALISTAS: esportes, música, entretenimento, tecnologia, clima, cultura
+- Se a pessoa gosta de um time de futebol, crie notícias verossímeis sobre esse time HOJE (próximo jogo, treino, escalação)
+- Se gosta de música, fale sobre lançamentos recentes, shows desta semana
+- Cada notificação deve parecer uma manchete de portal de notícias atualizado AGORA
+- Seja criativo mas VEROSSÍMIL - não invente resultados absurdos
 Para cada notificação, escolha um tipo entre: info, alert, reminder, task.`;
 
     const userPrompt = memberId && preferencesText
-      ? `Gere 5 notificações/notícias personalizadas para ${memberName}. 
+      ? `Gere 5 notícias FRESQUINHAS de HOJE (${today}, ${hour}) personalizadas para ${memberName}. 
 Preferências: ${preferencesText}. 
-FOCO: Notícias do dia, resultados esportivos, lançamentos musicais, novidades dos interesses listados.
-NÃO inclua nada sobre casa inteligente, energia ou automação.
-Exemplo: "🔴⚫ Flamengo vence o Palmeiras por 2x1 pelo Brasileirão", "🎵 Novo álbum de [artista] é lançado hoje"`
-      : `Gere 5 notificações úteis gerais para hoje ${today}. Inclua: previsão do tempo para hoje, uma notícia importante do Brasil, uma curiosidade interessante, um lembrete de bem-estar e uma notícia de tecnologia. NÃO fale sobre economia de energia ou automação residencial.`;
+IMPORTANTE: Todas devem parecer notícias que acabaram de ser publicadas AGORA. Use "hoje", "nesta tarde", "há pouco" nos textos.
+NÃO inclua nada sobre casa inteligente, energia ou automação.`
+      : `Gere 5 notificações úteis e ATUAIS para AGORA (${today}, ${hour} em Brasília). 
+Inclua: previsão do tempo para HOJE, uma notícia importante do Brasil de HOJE, uma curiosidade interessante, um lembrete de bem-estar para este momento do dia, e uma notícia de tecnologia recente.
+TODAS devem parecer publicadas AGORA. Use "hoje", "nesta tarde", "nesta manhã" nos textos.
+NÃO fale sobre economia de energia ou automação residencial.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
