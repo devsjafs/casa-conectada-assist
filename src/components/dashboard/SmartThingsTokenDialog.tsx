@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ExternalLink, Loader2, Key } from 'lucide-react';
+import { ExternalLink, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface SmartThingsTokenDialogProps {
   open: boolean;
@@ -17,16 +15,55 @@ interface SmartThingsTokenDialogProps {
 const SmartThingsTokenDialog = ({ open, onOpenChange, onSuccess }: SmartThingsTokenDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user || !token.trim()) {
+  // Check if already connected
+  useEffect(() => {
+    if (open && user) {
+      checkConnection();
+    }
+  }, [open, user]);
+
+  // Listen for OAuth callback result
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const smartthingsStatus = params.get('smartthings');
+
+    if (smartthingsStatus === 'connected') {
+      toast({
+        title: 'SmartThings conectado!',
+        description: 'Sua conta foi vinculada e os dispositivos foram importados.',
+      });
+      onSuccess();
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (smartthingsStatus === 'error') {
+      const message = params.get('message') || 'Erro desconhecido';
+      toast({
+        title: 'Erro ao conectar SmartThings',
+        description: `Falha na autenticação: ${message}`,
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const checkConnection = async () => {
+    const { data } = await supabase
+      .from('smartthings_connections')
+      .select('id, expires_at')
+      .eq('user_id', user?.id)
+      .maybeSingle();
+
+    setIsConnected(!!data);
+  };
+
+  const handleConnect = async () => {
+    if (!user) {
       toast({
         title: 'Erro',
-        description: 'Por favor, insira o Personal Access Token.',
+        description: 'Você precisa estar logado.',
         variant: 'destructive',
       });
       return;
@@ -35,36 +72,26 @@ const SmartThingsTokenDialog = ({ open, onOpenChange, onSuccess }: SmartThingsTo
     setLoading(true);
 
     try {
-      // Call edge function to validate token and fetch devices
-      const { data, error } = await supabase.functions.invoke('smartthings-sync', {
-        body: { 
-          token: token.trim(),
-          userId: user.id 
-        },
+      const { data, error } = await supabase.functions.invoke('smartthings-auth-start', {
+        body: { redirectUrl: window.location.origin },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (data?.url) {
+        // Redirect to SmartThings OAuth
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de autorização não retornada');
       }
-
-      toast({
-        title: 'SmartThings conectado!',
-        description: `${data.devicesImported || 0} dispositivo(s) importado(s) com sucesso.`,
-      });
-
-      setToken('');
-      onOpenChange(false);
-      onSuccess();
     } catch (error: any) {
-      console.error('SmartThings sync error:', error);
+      console.error('SmartThings auth error:', error);
       toast({
         title: 'Erro ao conectar',
-        description: error.message || 'Verifique se o token está correto e tente novamente.',
+        description: error.message || 'Não foi possível iniciar a autenticação.',
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -74,44 +101,36 @@ const SmartThingsTokenDialog = ({ open, onOpenChange, onSuccess }: SmartThingsTo
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
-            Conectar SmartThings
+            📱 Conectar SmartThings
           </DialogTitle>
           <DialogDescription>
-            Use um Personal Access Token (PAT) para importar seus dispositivos SmartThings.
+            Conecte sua conta Samsung SmartThings para importar e controlar seus dispositivos automaticamente.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="token">Personal Access Token</Label>
-            <Input
-              id="token"
-              type="password"
-              placeholder="Cole seu token aqui..."
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+        <div className="space-y-4">
+          {isConnected && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <CheckCircle className="w-5 h-5 text-primary" />
+              <span className="text-sm text-primary font-medium">SmartThings já está conectado</span>
+            </div>
+          )}
 
           <div className="glass rounded-lg p-3 text-sm space-y-2">
-            <p className="font-medium">Como obter o token:</p>
+            <p className="font-medium">Como funciona:</p>
             <ol className="list-decimal list-inside text-muted-foreground space-y-1">
-              <li>Acesse o site da Samsung SmartThings</li>
-              <li>Vá em "Personal Access Tokens"</li>
-              <li>Crie um novo token com permissões de dispositivos</li>
-              <li>Copie e cole o token acima</li>
+              <li>Clique em "Conectar" abaixo</li>
+              <li>Faça login na sua conta Samsung</li>
+              <li>Autorize o acesso aos dispositivos</li>
+              <li>Seus dispositivos serão importados automaticamente</li>
             </ol>
-            <Button
-              type="button"
-              variant="link"
-              className="p-0 h-auto text-primary"
-              onClick={() => window.open('https://account.smartthings.com/tokens', '_blank')}
-            >
-              <ExternalLink className="w-3 h-3 mr-1" />
-              Abrir SmartThings Tokens
-            </Button>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+            <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-muted-foreground">
+              O token é renovado automaticamente. Você só precisa conectar uma vez.
+            </p>
           </div>
 
           <div className="flex gap-2 justify-end">
@@ -123,18 +142,21 @@ const SmartThingsTokenDialog = ({ open, onOpenChange, onSuccess }: SmartThingsTo
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !token.trim()}>
+            <Button onClick={handleConnect} disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Conectando...
                 </>
               ) : (
-                'Conectar e Importar'
+                <>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  {isConnected ? 'Reconectar' : 'Conectar SmartThings'}
+                </>
               )}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

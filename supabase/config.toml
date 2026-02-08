@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.generate-notifications]
 verify_jwt = false
+
+[functions.smartthings-webhook]
+verify_jwt = false
+
+[functions.smartthings-auth-start]
+verify_jwt = false
+
+[functions.smartthings-auth-callback]
+verify_jwt = false
