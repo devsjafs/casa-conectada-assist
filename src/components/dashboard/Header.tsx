@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Settings, LogOut, Home, Plug } from 'lucide-react';
+import { Settings, LogOut, Home, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -14,11 +14,10 @@ import SettingsDialog from './SettingsDialog';
 
 interface HeaderProps {
   onOpenIntegrations?: () => void;
-  onOpenNotifications?: () => void;
   onMembersUpdated?: () => void;
 }
 
-const Header = ({ onOpenIntegrations, onOpenNotifications, onMembersUpdated }: HeaderProps) => {
+const Header = ({ onOpenIntegrations, onMembersUpdated }: HeaderProps) => {
   const { user, signOut } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   
@@ -64,11 +63,6 @@ const Header = ({ onOpenIntegrations, onOpenNotifications, onMembersUpdated }: H
           {onOpenIntegrations && (
             <Button variant="ghost" size="icon" onClick={onOpenIntegrations} title="Integrações">
               <Plug className="w-5 h-5" />
-            </Button>
-          )}
-          {onOpenNotifications && (
-            <Button variant="ghost" size="icon" onClick={onOpenNotifications} title="Notificações">
-              <Bell className="w-5 h-5" />
             </Button>
           )}
           

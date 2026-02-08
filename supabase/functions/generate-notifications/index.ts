@@ -47,16 +47,25 @@ serve(async (req) => {
 
     const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-    const systemPrompt = `Você é um assistente de casa inteligente. Gere notificações relevantes e personalizadas para o painel de notificações.
+    const systemPrompt = `Você é um assistente de casa inteligente que funciona como um feed de notícias personalizado.
 A data de hoje é: ${today}.
-Gere exatamente 5 notificações curtas e relevantes. Cada uma deve ser real e informativa (como um feed de notícias personalizado).
+Gere exatamente 5 notificações RELEVANTES baseadas nos interesses da pessoa. 
+REGRAS IMPORTANTES:
+- NÃO fale sobre economia de energia, dicas de automação ou configurações da casa
+- Foque em NOTÍCIAS REAIS do dia: esportes, música, entretenimento, tecnologia, etc.
+- Se a pessoa gosta de um time de futebol, dê notícias sobre esse time (resultados, próximos jogos, contratações)
+- Se gosta de música, fale sobre lançamentos, shows, novidades do gênero
+- Cada notificação deve ser como uma manchete de jornal personalizada
+- Seja específico e realista, como se fosse um feed do Google News personalizado
 Para cada notificação, escolha um tipo entre: info, alert, reminder, task.`;
 
     const userPrompt = memberId && preferencesText
-      ? `Gere 5 notificações personalizadas para ${memberName}. Preferências: ${preferencesText}. 
-Inclua notícias do dia relacionadas aos interesses, lembretes úteis e informações relevantes.
-Exemplo: se gosta de Flamengo, inclua resultado ou próximo jogo. Se gosta de Rock, mencione um lançamento musical.`
-      : `Gere 5 notificações gerais para uma casa inteligente. Inclua dicas de economia de energia, previsão do tempo, lembretes de segurança e automação.`;
+      ? `Gere 5 notificações/notícias personalizadas para ${memberName}. 
+Preferências: ${preferencesText}. 
+FOCO: Notícias do dia, resultados esportivos, lançamentos musicais, novidades dos interesses listados.
+NÃO inclua nada sobre casa inteligente, energia ou automação.
+Exemplo: "🔴⚫ Flamengo vence o Palmeiras por 2x1 pelo Brasileirão", "🎵 Novo álbum de [artista] é lançado hoje"`
+      : `Gere 5 notificações úteis gerais para hoje ${today}. Inclua: previsão do tempo para hoje, uma notícia importante do Brasil, uma curiosidade interessante, um lembrete de bem-estar e uma notícia de tecnologia. NÃO fale sobre economia de energia ou automação residencial.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

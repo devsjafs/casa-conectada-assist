@@ -227,7 +227,7 @@ const NotificationsPanel = ({ members, recognizedMemberId, onMemberRecognized }:
                       {notification.title}
                     </h4>
                     {notification.message && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {notification.message}
                       </p>
                     )}

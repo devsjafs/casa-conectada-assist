@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/dashboard/Header';
@@ -14,7 +14,6 @@ import AddDeviceDialog from '@/components/dashboard/AddDeviceDialog';
 import AddRoomDialog from '@/components/dashboard/AddRoomDialog';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface Room {
   id: string;
@@ -66,7 +65,7 @@ const Index = () => {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showNotifications, setShowNotifications] = useState(true);
+  // Notifications panel is always visible - no toggle state needed
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [recognizedMemberId, setRecognizedMemberId] = useState<string | null>(null);
 
@@ -248,11 +247,8 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 flex">
-        {/* Notifications sidebar - LEFT SIDE with always-on camera */}
-        <div className={cn(
-          "fixed top-0 left-0 w-80 h-screen py-4 pl-4 transition-transform duration-300 z-10",
-          showNotifications ? "translate-x-0" : "-translate-x-full"
-        )}>
+        {/* Notifications sidebar - LEFT SIDE, always fixed */}
+        <div className="fixed top-0 left-0 w-96 h-screen py-4 pl-4 z-10">
           <div className="h-full">
             <NotificationsPanel 
               members={members}
@@ -263,31 +259,11 @@ const Index = () => {
         </div>
 
         {/* Main content */}
-        <div className={cn(
-          "flex-1 transition-all duration-300",
-          showNotifications ? "ml-80" : "ml-0"
-        )}>
+        <div className="flex-1 ml-96">
           <Header 
             onOpenIntegrations={() => setShowIntegrations(true)} 
-            onOpenNotifications={() => setShowNotifications(!showNotifications)}
             onMembersUpdated={fetchData}
           />
-
-          <Button
-            variant="outline"
-            size="icon"
-            className={cn(
-              "fixed top-20 left-4 z-20 transition-all duration-300",
-              showNotifications && "left-[336px]"
-            )}
-            onClick={() => setShowNotifications(!showNotifications)}
-          >
-            {showNotifications ? (
-              <PanelLeftClose className="w-4 h-4" />
-            ) : (
-              <PanelLeftOpen className="w-4 h-4" />
-            )}
-          </Button>
 
           <main className="container mx-auto px-4 py-6 space-y-8">
           {hasNoData ? (
