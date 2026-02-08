@@ -8,8 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Plug, Check, ExternalLink, Info, Unplug, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SmartThingsTokenDialog from './SmartThingsTokenDialog';
-import PositivoTokenDialog from './PositivoTokenDialog';
-import AlexaTokenDialog from './AlexaTokenDialog';
 import TapoTokenDialog from './TapoTokenDialog';
 
 interface Integration {
@@ -45,34 +43,6 @@ const integrationsList: Omit<Integration, 'id' | 'is_connected'>[] = [
     description: 'Integre com dispositivos Samsung e SmartThings Hub.',
     hasOAuth: true,
   },
-  {
-    type: 'positivo',
-    name: 'Positivo Casa Inteligente',
-    logo: '🏠',
-    description: 'Controle dispositivos da linha Positivo Casa Inteligente.',
-    hasOAuth: true,
-  },
-  {
-    type: 'samsung',
-    name: 'Samsung Account',
-    logo: '📺',
-    description: 'TVs, ar condicionados e outros dispositivos Samsung.',
-    comingSoon: true,
-  },
-  {
-    type: 'google_home',
-    name: 'Google Home',
-    logo: '🎙️',
-    description: 'Integração com dispositivos Google Nest e compatíveis.',
-    comingSoon: true,
-  },
-  {
-    type: 'alexa',
-    name: 'Amazon Alexa',
-    logo: '🔵',
-    description: 'Controle dispositivos conectados à Alexa.',
-    hasOAuth: true,
-  },
 ];
 
 interface IntegrationsPageProps {
@@ -85,8 +55,6 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
   const [integrations, setIntegrations] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<string | null>(null);
   const [smartThingsDialogOpen, setSmartThingsDialogOpen] = useState(false);
-  const [positivoDialogOpen, setPositivoDialogOpen] = useState(false);
-  const [alexaDialogOpen, setAlexaDialogOpen] = useState(false);
   const [tapoDialogOpen, setTapoDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -120,12 +88,6 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
         return;
       case 'tapo':
         setTapoDialogOpen(true);
-        return;
-      case 'positivo':
-        setPositivoDialogOpen(true);
-        return;
-      case 'alexa':
-        setAlexaDialogOpen(true);
         return;
       case 'tuya':
         toast({
@@ -323,18 +285,6 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
       <SmartThingsTokenDialog
         open={smartThingsDialogOpen}
         onOpenChange={setSmartThingsDialogOpen}
-        onSuccess={fetchIntegrations}
-      />
-      
-      <PositivoTokenDialog
-        open={positivoDialogOpen}
-        onOpenChange={setPositivoDialogOpen}
-        onSuccess={fetchIntegrations}
-      />
-      
-      <AlexaTokenDialog
-        open={alexaDialogOpen}
-        onOpenChange={setAlexaDialogOpen}
         onSuccess={fetchIntegrations}
       />
       
