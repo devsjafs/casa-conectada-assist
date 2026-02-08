@@ -1,0 +1,1 @@
+ALTER TABLE public.smartthings_connections ADD CONSTRAINT smartthings_connections_user_id_key UNIQUE (user_id);
