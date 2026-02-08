@@ -247,8 +247,8 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 flex">
-        {/* Notifications sidebar - LEFT SIDE, always fixed */}
-        <div className="fixed top-0 left-0 w-96 h-screen py-4 pl-4 z-10">
+        {/* Notifications sidebar - LEFT SIDE, hidden on small tablets, fixed on large */}
+        <div className="hidden lg:block fixed top-0 left-0 w-80 xl:w-96 h-screen py-4 pl-4 z-10">
           <div className="h-full">
             <NotificationsPanel 
               members={members}
@@ -259,13 +259,13 @@ const Index = () => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 ml-96">
+        <div className="flex-1 lg:ml-80 xl:ml-96">
           <Header 
             onOpenIntegrations={() => setShowIntegrations(true)} 
             onMembersUpdated={fetchData}
           />
 
-          <main className="container mx-auto px-4 py-6 space-y-8">
+          <main className="mx-auto px-4 md:px-6 py-6 space-y-8 max-w-7xl">
           {hasNoData ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="p-6 rounded-2xl bg-primary/10 mb-6">
@@ -317,7 +317,7 @@ const Index = () => {
                       {filteredCameras.filter(c => c.status === 'online').length} online
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filteredCameras.map(camera => (
                       <CameraCard 
                         key={camera.id} 
@@ -343,7 +343,7 @@ const Index = () => {
                       {filteredLights.filter(l => l.is_on).length} ligadas
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredLights.map(light => (
                       <LightCard 
                         key={light.id} 
@@ -373,7 +373,7 @@ const Index = () => {
                       {filteredDevices.filter(d => d.is_on).length} ativos
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredDevices.map(device => (
                       <RemoteCard 
                         key={device.id} 
