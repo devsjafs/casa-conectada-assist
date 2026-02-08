@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Camera, User, Loader2, Brain } from 'lucide-react';
 import { useFaceRecognition } from '@/hooks/useFaceRecognition';
+import PreferencesSelector, { type PreferencesData } from './PreferencesSelector';
 
 interface AddMemberDialogProps {
   open: boolean;
@@ -29,9 +30,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
   const streamRef = useRef<MediaStream | null>(null);
   
   // Preferences
-  const [musicGenres, setMusicGenres] = useState('');
-  const [sportsTeams, setSportsTeams] = useState('');
-  const [interests, setInterests] = useState('');
+  const [preferences, setPreferences] = useState<PreferencesData>({ music: [], sports: [], interests: [] });
 
   const startCamera = useCallback(async () => {
     try {
@@ -120,12 +119,6 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
 
     setLoading(true);
     try {
-      const preferences = {
-        music: musicGenres.split(',').map(s => s.trim()).filter(Boolean),
-        sports: sportsTeams.split(',').map(s => s.trim()).filter(Boolean),
-        interests: interests.split(',').map(s => s.trim()).filter(Boolean),
-      };
-
       const { error } = await supabase.from('household_members').insert({
         user_id: user.id,
         name: name.trim(),
@@ -161,15 +154,13 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
     setName('');
     setCapturedPhoto(null);
     setFaceEmbedding(null);
-    setMusicGenres('');
-    setSportsTeams('');
-    setInterests('');
+    setPreferences({ music: [], sports: [], interests: [] });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Adicionar Morador</DialogTitle>
           <DialogDescription>
@@ -177,7 +168,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Input
@@ -278,37 +269,7 @@ const AddMemberDialog = ({ open, onOpenChange, onMemberAdded }: AddMemberDialogP
           {/* Preferences section */}
           <div className="space-y-3 pt-2 border-t">
             <p className="text-sm font-medium text-muted-foreground">Preferências (para notificações personalizadas)</p>
-            
-            <div className="space-y-2">
-              <Label htmlFor="music">Gêneros musicais favoritos</Label>
-              <Input
-                id="music"
-                placeholder="Ex: Rock, MPB, Sertanejo"
-                value={musicGenres}
-                onChange={(e) => setMusicGenres(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Separe por vírgulas</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sports">Times de futebol / esportes</Label>
-              <Input
-                id="sports"
-                placeholder="Ex: Flamengo, Brasil"
-                value={sportsTeams}
-                onChange={(e) => setSportsTeams(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="interests">Outros interesses</Label>
-              <Input
-                id="interests"
-                placeholder="Ex: Tecnologia, Filmes, Culinária"
-                value={interests}
-                onChange={(e) => setInterests(e.target.value)}
-              />
-            </div>
+            <PreferencesSelector value={preferences} onChange={setPreferences} />
           </div>
 
           <div className="flex gap-2 pt-4">
