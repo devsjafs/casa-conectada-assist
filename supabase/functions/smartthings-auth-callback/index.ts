@@ -145,7 +145,7 @@ serve(async (req) => {
       client_secret: clientSecret,
     }).toString();
 
-    const tokenResponse = await fetch("https://auth-global.api.smartthings.com/oauth/token", {
+    const tokenResponse = await fetch("https://api.smartthings.com/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

@@ -16,7 +16,7 @@ async function refreshSmartThingsToken(
   const clientSecret = Deno.env.get('SMARTTHINGS_CLIENT_SECRET')!;
 
   try {
-    const response = await fetch('https://auth-global.api.smartthings.com/oauth/token', {
+    const response = await fetch('https://api.smartthings.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
