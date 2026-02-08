@@ -34,15 +34,31 @@ async function verifyState(state: string, secret: string): Promise<{ userId: str
   }
 }
 
+// Map SmartThings device categories to our device types
+function mapDeviceType(stDevice: any): string {
+  const categories = stDevice.components?.[0]?.categories || [];
+  const categoryNames = categories.map((c: any) => c.name?.toLowerCase() || "");
+
+  if (categoryNames.includes("light") || categoryNames.includes("switch")) return "light";
+  if (categoryNames.includes("camera")) return "camera";
+  if (categoryNames.includes("airconditioner") || categoryNames.includes("thermostat")) return "ac";
+  if (categoryNames.includes("television") || categoryNames.includes("tv")) return "tv";
+  if (categoryNames.includes("fan")) return "fan";
+  if (categoryNames.includes("speaker")) return "soundbar";
+  if (categoryNames.includes("sensor") || categoryNames.includes("motionsensor")) return "sensor";
+
+  return "switch";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  // IMPORTANT: do not force `!` here; we want clean error handling if missing.
+  // ✅ IMPORTANT: your secrets are named SMARTTHINGS_CLIENT_ID / SMARTTHINGS_CLIENT_SECRET
   const clientId = Deno.env.get("SMARTTHINGS_CLIENT_ID");
   const clientSecret = Deno.env.get("SMARTTHINGS_CLIENT_SECRET");
 
@@ -54,6 +70,14 @@ serve(async (req) => {
   let redirectUrl = "https://casa-conectada-assist.lovable.app";
 
   try {
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing Supabase env vars", {
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceRoleKey: !!serviceRoleKey,
+      });
+      return new Response("Server misconfigured", { status: 500 });
+    }
+
     // Handle OAuth errors from SmartThings
     if (oauthError) {
       console.error("SmartThings OAuth error:", oauthError);
@@ -73,7 +97,7 @@ serve(async (req) => {
       });
     }
 
-    // Verify state
+    // Verify state (signed with service role key)
     const stateData = await verifyState(state, serviceRoleKey);
     if (!stateData) {
       console.error("Invalid or expired state");
@@ -93,16 +117,33 @@ serve(async (req) => {
       console.error("Missing SmartThings OAuth env vars", {
         hasClientId: !!clientId,
         hasClientSecret: !!clientSecret,
+        clientIdLen: clientId?.length ?? 0,
+        clientSecretLen: clientSecret?.length ?? 0,
+        // show the env var names expected (helps debugging in Supabase UI)
+        expectedEnv: ["SMARTTHINGS_CLIENT_ID", "SMARTTHINGS_CLIENT_SECRET"],
       });
+
       return new Response(null, {
         status: 302,
         headers: { Location: `${redirectUrl}?smartthings=error&message=missing_client_credentials` },
       });
     }
 
-    // Exchange code for tokens (SmartThings expects client authentication via Basic Auth)
+    // Exchange code for tokens
     const callbackUrl = `${supabaseUrl}/functions/v1/smartthings-auth-callback`;
+
+    // ✅ “Bulletproof” token exchange: Basic Auth + body fields
     const basic = btoa(`${clientId}:${clientSecret}`);
+
+    const tokenBody = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: callbackUrl,
+
+      // fallback: some servers accept/expect these in body too
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString();
 
     const tokenResponse = await fetch("https://auth-global.api.smartthings.com/oauth/token", {
       method: "POST",
@@ -110,11 +151,7 @@ serve(async (req) => {
         "Content-Type": "application/x-www-form-urlencoded",
         Authorization: `Basic ${basic}`,
       },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: callbackUrl,
-      }).toString(),
+      body: tokenBody,
     });
 
     if (!tokenResponse.ok) {
@@ -130,6 +167,7 @@ serve(async (req) => {
     console.log("Tokens received successfully", {
       hasAccessToken: !!tokenData.access_token,
       hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in ?? null,
       hasInstalledAppId: !!tokenData.installed_app_id,
     });
 
@@ -158,7 +196,7 @@ serve(async (req) => {
       });
     }
 
-    // Also update integrations table to mark as connected
+    // Mark integration as connected
     await supabase.from("integrations").upsert(
       {
         user_id: userId,
@@ -169,7 +207,7 @@ serve(async (req) => {
       { onConflict: "user_id,type" },
     );
 
-    // Sync devices using the new token (non-fatal if it fails)
+    // Sync devices (non-fatal)
     try {
       const devicesResponse = await fetch("https://api.smartthings.com/v1/devices", {
         headers: {
@@ -183,7 +221,6 @@ serve(async (req) => {
         const devices = devicesData.items || [];
         console.log("Syncing", devices.length, "devices");
 
-        // Get integration ID
         const { data: integration } = await supabase
           .from("integrations")
           .select("id")
@@ -214,7 +251,6 @@ serve(async (req) => {
           );
         }
 
-        // Update device count in integrations
         await supabase
           .from("integrations")
           .update({ metadata: { devices_count: devices.length } })
@@ -243,19 +279,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Map SmartThings device categories to our device types
-function mapDeviceType(stDevice: any): string {
-  const categories = stDevice.components?.[0]?.categories || [];
-  const categoryNames = categories.map((c: any) => c.name?.toLowerCase() || "");
-
-  if (categoryNames.includes("light") || categoryNames.includes("switch")) return "light";
-  if (categoryNames.includes("camera")) return "camera";
-  if (categoryNames.includes("airconditioner") || categoryNames.includes("thermostat")) return "ac";
-  if (categoryNames.includes("television") || categoryNames.includes("tv")) return "tv";
-  if (categoryNames.includes("fan")) return "fan";
-  if (categoryNames.includes("speaker")) return "soundbar";
-  if (categoryNames.includes("sensor") || categoryNames.includes("motionsensor")) return "sensor";
-
-  return "switch";
-}
