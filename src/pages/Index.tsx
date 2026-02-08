@@ -247,8 +247,8 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 flex">
-        {/* Notifications sidebar - LEFT SIDE, hidden on small tablets, fixed on large */}
-        <div className="hidden lg:block fixed top-0 left-0 w-80 xl:w-96 h-screen py-4 pl-4 z-10">
+        {/* Notifications sidebar - LEFT SIDE, visible on tablets landscape and up */}
+        <div className="hidden md:block fixed top-0 left-0 w-72 lg:w-80 xl:w-96 h-screen py-4 pl-4 z-10">
           <div className="h-full">
             <NotificationsPanel 
               members={members}
@@ -259,7 +259,7 @@ const Index = () => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 lg:ml-80 xl:ml-96">
+        <div className="flex-1 md:ml-72 lg:ml-80 xl:ml-96">
           <Header 
             onOpenIntegrations={() => setShowIntegrations(true)} 
             onMembersUpdated={fetchData}
