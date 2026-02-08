@@ -60,11 +60,6 @@ const Header = ({ onOpenIntegrations, onMembersUpdated }: HeaderProps) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {onOpenIntegrations && (
-            <Button variant="ghost" size="icon" onClick={onOpenIntegrations} title="Integrações">
-              <Plug className="w-5 h-5" />
-            </Button>
-          )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
