@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plug, Check, ExternalLink, Info, Unplug, Key, LogIn } from 'lucide-react';
+import { Plug, Check, ExternalLink, Info, Unplug, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SmartThingsTokenDialog from './SmartThingsTokenDialog';
 import PositivoTokenDialog from './PositivoTokenDialog';
@@ -276,10 +276,10 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
                           onClick={() => handleConnect(integration.type)}
                           disabled={loading === integration.type}
                         >
-                          {integration.type === 'smartthings' ? (
+                        {integration.type === 'smartthings' ? (
                             <>
-                              <Key className="w-4 h-4 mr-2" />
-                              Usar Token
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Conectar OAuth
                             </>
                           ) : (
                             <>
@@ -297,17 +297,10 @@ const IntegrationsPage = ({ onBack }: IntegrationsPageProps) => {
                           onClick={() => handleConnect(integration.type)}
                           disabled={loading === integration.type}
                         >
-                          {integration.type === 'smartthings' ? (
-                            <>
-                              <Key className="w-4 h-4 mr-2" />
-                              Atualizar Token
-                            </>
-                          ) : (
-                            <>
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Reconectar
-                            </>
-                          )}
+                        <>
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Reconectar
+                        </>
                         </Button>
                         <Button 
                           variant="destructive" 
