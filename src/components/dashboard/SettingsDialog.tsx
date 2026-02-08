@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, User, Trash2, Loader2, Bell, Palette, Home, Users } from 'lucide-react';
+import { Settings, User, Trash2, Loader2, Bell, Palette, Home, Users, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import AddMemberDialog from './AddMemberDialog';
+import EditMemberDialog from './EditMemberDialog';
 import { cn } from '@/lib/utils';
 
 interface HouseholdMember {
@@ -37,6 +38,7 @@ const SettingsDialog = ({ open, onOpenChange, onMembersUpdated }: SettingsDialog
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [editingMember, setEditingMember] = useState<HouseholdMember | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -219,19 +221,30 @@ const SettingsDialog = ({ open, onOpenChange, onMembersUpdated }: SettingsDialog
                             </div>
                           </div>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteMember(member)}
-                            disabled={deletingId === member.id}
-                          >
-                            {deletingId === member.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </Button>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary"
+                              onClick={() => setEditingMember(member)}
+                              title="Editar preferências"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteMember(member)}
+                              disabled={deletingId === member.id}
+                            >
+                              {deletingId === member.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -385,6 +398,13 @@ const SettingsDialog = ({ open, onOpenChange, onMembersUpdated }: SettingsDialog
         open={showAddMember}
         onOpenChange={setShowAddMember}
         onMemberAdded={handleMemberAdded}
+      />
+
+      <EditMemberDialog
+        open={!!editingMember}
+        onOpenChange={(isOpen) => { if (!isOpen) setEditingMember(null); }}
+        member={editingMember}
+        onMemberUpdated={handleMemberAdded}
       />
     </>
   );
