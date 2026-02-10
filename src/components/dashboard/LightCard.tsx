@@ -1,8 +1,7 @@
-import { Lightbulb, Sun } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 
 interface Light {
   id: string;
@@ -20,12 +19,6 @@ interface LightCardProps {
   onBrightnessChange: (id: string, brightness: number) => void;
 }
 
-const brandColors: Record<string, string> = {
-  tuya: 'text-orange-400',
-  positivo: 'text-green-400',
-  smartthings: 'text-blue-400',
-};
-
 const LightCard = ({ light, onToggle, onBrightnessChange }: LightCardProps) => {
   const [localBrightness, setLocalBrightness] = useState(light.brightness);
 
@@ -35,52 +28,44 @@ const LightCard = ({ light, onToggle, onBrightnessChange }: LightCardProps) => {
   };
 
   return (
-    <div className={cn(
-      "glass rounded-xl p-4 transition-all duration-300",
-      light.isOn && "glow-primary"
-    )}>
-      <div className="flex items-start justify-between mb-4">
+    <div
+      className={cn(
+        "glass rounded-2xl p-3 transition-all duration-200 cursor-pointer select-none",
+        light.isOn 
+          ? "ring-1 ring-primary/30 bg-primary/5" 
+          : "opacity-70"
+      )}
+      onClick={() => onToggle(light.id)}
+    >
+      <div className="flex items-center gap-3 mb-2">
         <div className={cn(
-          "p-3 rounded-xl transition-all duration-300",
-          light.isOn 
-            ? "bg-primary/20" 
-            : "bg-secondary"
+          "p-2 rounded-xl transition-colors",
+          light.isOn ? "bg-primary/20" : "bg-secondary"
         )}>
           <Lightbulb 
             className={cn(
-              "w-6 h-6 transition-all duration-300",
+              "w-5 h-5",
               light.isOn ? "text-primary" : "text-muted-foreground"
             )} 
             fill={light.isOn ? light.color || 'hsl(var(--primary))' : 'none'}
           />
         </div>
-        <Switch 
-          checked={light.isOn} 
-          onCheckedChange={() => onToggle(light.id)}
-        />
-      </div>
-
-      <div className="space-y-1 mb-4">
-        <h3 className="font-medium text-sm">{light.name}</h3>
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          {light.room}
-          {light.brand && (
-            <>
-              <span className="mx-1">•</span>
-              <span className={brandColors[light.brand] || 'text-muted-foreground'}>{light.brand}</span>
-            </>
-          )}
-        </p>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm truncate">{light.name}</h3>
+          <p className="text-xs text-muted-foreground truncate">{light.room}</p>
+        </div>
+        <span className={cn(
+          "text-xs font-medium px-2 py-0.5 rounded-full",
+          light.isOn 
+            ? "bg-success/20 text-success" 
+            : "bg-muted text-muted-foreground"
+        )}>
+          {light.isOn ? `${localBrightness}%` : 'OFF'}
+        </span>
       </div>
 
       {light.isOn && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground flex items-center gap-1">
-              <Sun className="w-3 h-3" /> Brilho
-            </span>
-            <span className="font-medium">{localBrightness}%</span>
-          </div>
+        <div onClick={(e) => e.stopPropagation()} className="px-1">
           <Slider
             value={[localBrightness]}
             onValueChange={handleBrightnessChange}

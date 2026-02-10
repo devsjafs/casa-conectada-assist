@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings, LogOut, Home, Plug } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, LogOut, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -10,27 +10,48 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import SettingsDialog from './SettingsDialog';
 
 interface HeaderProps {
   onOpenIntegrations?: () => void;
   onMembersUpdated?: () => void;
+  devicesCount?: number;
+  onlineCount?: number;
 }
 
-const Header = ({ onOpenIntegrations, onMembersUpdated }: HeaderProps) => {
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 6) return 'Boa madrugada';
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
+
+const Header = ({ onOpenIntegrations, onMembersUpdated, devicesCount, onlineCount }: HeaderProps) => {
   const { user, signOut } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
-  
-  const currentTime = new Date().toLocaleTimeString('pt-BR', { 
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentTime = time.toLocaleTimeString('pt-BR', { 
     hour: '2-digit', 
     minute: '2-digit' 
   });
+
+  const currentSeconds = time.toLocaleTimeString('pt-BR', { second: '2-digit' }).slice(-2);
   
-  const currentDate = new Date().toLocaleDateString('pt-BR', { 
+  const currentDate = time.toLocaleDateString('pt-BR', { 
     weekday: 'long', 
     day: 'numeric', 
     month: 'long' 
   });
+
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Usuário';
 
   const userInitials = user?.user_metadata?.full_name
     ?.split(' ')
@@ -40,32 +61,34 @@ const Header = ({ onOpenIntegrations, onMembersUpdated }: HeaderProps) => {
     .slice(0, 2) || user?.email?.[0]?.toUpperCase() || 'U';
 
   return (
-    <header className="glass sticky top-0 z-50 px-6 py-4">
+    <header className="px-6 py-5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-primary/20 glow-primary">
-              <Home className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gradient">Smart Home</h1>
-              <p className="text-xs text-muted-foreground">Casa Conectada</p>
-            </div>
+        {/* Clock + greeting */}
+        <div className="flex items-baseline gap-4">
+          <div className="flex items-baseline">
+            <span className="text-5xl font-extralight tracking-tight text-foreground">{currentTime}</span>
+            <span className="text-lg font-light text-muted-foreground ml-1">{currentSeconds}</span>
+          </div>
+          <div className="hidden sm:block">
+            <p className="text-sm text-muted-foreground capitalize">{currentDate}</p>
+            <p className="text-base font-medium text-foreground">{getGreeting()}, {firstName}</p>
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col items-center">
-          <span className="text-3xl font-light tracking-tight">{currentTime}</span>
-          <span className="text-sm text-muted-foreground capitalize">{currentDate}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
+        {/* Right side: stats badge + avatar */}
+        <div className="flex items-center gap-3">
+          {devicesCount !== undefined && onlineCount !== undefined && (
+            <Badge variant="secondary" className="text-xs px-3 py-1.5 hidden sm:flex gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
+              {onlineCount}/{devicesCount} ativos
+            </Badge>
+          )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
