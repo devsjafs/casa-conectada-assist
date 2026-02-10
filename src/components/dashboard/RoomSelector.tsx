@@ -1,6 +1,5 @@
 import { Sofa, Bed, CookingPot, Bath, Monitor, Home, Car, Trees, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface Room {
   id: string;
@@ -28,36 +27,38 @@ const roomIcons: Record<string, React.ElementType> = {
 
 const RoomSelector = ({ rooms, selectedRoom, onSelectRoom }: RoomSelectorProps) => {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      <Button
-        variant={selectedRoom === null ? "default" : "secondary"}
+    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+      <button
         className={cn(
-          "flex items-center gap-2 shrink-0",
-          selectedRoom === null && "glow-primary"
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0",
+          selectedRoom === null 
+            ? "bg-primary text-primary-foreground" 
+            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
         )}
         onClick={() => onSelectRoom(null)}
       >
-        <Home className="w-4 h-4" />
+        <Home className="w-3.5 h-3.5" />
         Todos
-      </Button>
+      </button>
       
       {rooms.map((room) => {
         const Icon = roomIcons[room.icon] || Home;
         const isSelected = selectedRoom === room.id;
         
         return (
-          <Button
+          <button
             key={room.id}
-            variant={isSelected ? "default" : "secondary"}
             className={cn(
-              "flex items-center gap-2 shrink-0",
-              isSelected && "glow-primary"
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0",
+              isSelected 
+                ? "bg-primary text-primary-foreground" 
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
             )}
             onClick={() => onSelectRoom(room.id)}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-3.5 h-3.5" />
             {room.name}
-          </Button>
+          </button>
         );
       })}
     </div>

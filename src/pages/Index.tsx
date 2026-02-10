@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Camera, Lightbulb, Gamepad2, Plus, Plug, Home as HomeIcon } from 'lucide-react';
+import { Plus, Plug, Home as HomeIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/dashboard/Header';
@@ -8,12 +7,12 @@ import CameraCard from '@/components/dashboard/CameraCard';
 import LightCard from '@/components/dashboard/LightCard';
 import RemoteCard from '@/components/dashboard/RemoteCard';
 import RoomSelector from '@/components/dashboard/RoomSelector';
-import QuickStats from '@/components/dashboard/QuickStats';
 import IntegrationsPage from '@/components/dashboard/IntegrationsPage';
 import AddDeviceDialog from '@/components/dashboard/AddDeviceDialog';
 import AddRoomDialog from '@/components/dashboard/AddRoomDialog';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface Room {
   id: string;
@@ -65,7 +64,6 @@ const Index = () => {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Notifications panel is always visible - no toggle state needed
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [recognizedMemberId, setRecognizedMemberId] = useState<string | null>(null);
 
@@ -209,6 +207,13 @@ const Index = () => {
     ? cameras.filter(c => c.devices.room_id === selectedRoom)
     : cameras;
 
+  // Unified widget list for the grid
+  const allWidgets = [
+    ...filteredCameras.map(c => ({ type: 'camera' as const, data: c })),
+    ...filteredLights.map(l => ({ type: 'light' as const, data: l })),
+    ...filteredDevices.map(d => ({ type: 'remote' as const, data: d })),
+  ];
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -223,10 +228,6 @@ const Index = () => {
   if (showIntegrations) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-        </div>
         <div className="relative z-10">
           <Header onMembersUpdated={fetchData} />
           <main className="container mx-auto px-4 py-6">
@@ -240,34 +241,21 @@ const Index = () => {
   const hasNoData = rooms.length === 0 && devices.length === 0 && cameras.length === 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Ambient Header */}
+      <Header 
+        onOpenIntegrations={() => setShowIntegrations(true)} 
+        onMembersUpdated={fetchData}
+        devicesCount={devices.length}
+        onlineCount={devices.filter(d => d.is_on).length}
+      />
 
-      <div className="relative z-10 flex">
-        {/* Notifications sidebar - LEFT SIDE, visible on tablets landscape and up */}
-        <div className="hidden md:block fixed top-0 left-0 w-72 lg:w-80 xl:w-96 h-screen py-4 pl-4 z-10">
-          <div className="h-full">
-            <NotificationsPanel 
-              members={members}
-              recognizedMemberId={recognizedMemberId} 
-              onMemberRecognized={setRecognizedMemberId}
-            />
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 md:ml-72 lg:ml-80 xl:ml-96">
-          <Header 
-            onOpenIntegrations={() => setShowIntegrations(true)} 
-            onMembersUpdated={fetchData}
-          />
-
-          <main className="mx-auto px-4 md:px-6 py-6 space-y-8 max-w-7xl">
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Devices area - LEFT */}
+        <div className="flex-1 flex flex-col px-4 md:px-6 pb-4 overflow-y-auto">
           {hasNoData ? (
-            <div className="flex flex-col items-center justify-center py-20">
+            <div className="flex-1 flex flex-col items-center justify-center py-12">
               <div className="p-6 rounded-2xl bg-primary/10 mb-6">
                 <HomeIcon className="w-16 h-16 text-primary" />
               </div>
@@ -288,124 +276,106 @@ const Index = () => {
             </div>
           ) : (
             <>
-              <QuickStats devicesCount={devices.length} onlineCount={devices.filter(d => d.is_on).length} />
+              {/* Unified widgets grid */}
+              <div className="flex-1">
+                {allWidgets.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    {allWidgets.map((widget) => {
+                      if (widget.type === 'camera') {
+                        const c = widget.data as CameraData;
+                        return (
+                          <CameraCard 
+                            key={`cam-${c.id}`}
+                            camera={{
+                              id: c.id,
+                              name: c.devices.name,
+                              location: c.devices.rooms?.name || 'Sem local',
+                              status: c.status as 'online' | 'offline',
+                              thumbnail: c.snapshot_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+                            }}
+                          />
+                        );
+                      }
+                      if (widget.type === 'light') {
+                        const l = widget.data as Device;
+                        return (
+                          <LightCard 
+                            key={`light-${l.id}`}
+                            light={{
+                              id: l.id,
+                              name: l.name,
+                              room: l.rooms?.name || 'Sem local',
+                              isOn: l.is_on,
+                              brightness: l.settings?.brightness || 100,
+                              color: l.settings?.color,
+                              brand: (l.integrations?.type as any) || 'tuya',
+                            }}
+                            onToggle={handleDeviceToggle}
+                            onBrightnessChange={handleBrightnessChange}
+                          />
+                        );
+                      }
+                      const d = widget.data as Device;
+                      return (
+                        <RemoteCard 
+                          key={`remote-${d.id}`}
+                          device={{
+                            id: d.id,
+                            name: d.name,
+                            type: d.type as any,
+                            room: d.rooms?.name || 'Sem local',
+                            isOn: d.is_on,
+                            brand: (d.integrations?.type as any) || 'positivo',
+                            settings: d.settings,
+                          }}
+                          onToggle={handleDeviceToggle}
+                          onSettingChange={handleDeviceSettingChange}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 glass rounded-xl">
+                    <p className="text-muted-foreground mb-4">Nenhum dispositivo cadastrado ainda</p>
+                    <Button onClick={() => setShowAddDevice(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Dispositivo
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-              <section className="flex items-center justify-between">
+              {/* Room selector pills + add buttons at bottom */}
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/30">
                 <RoomSelector 
                   rooms={rooms} 
                   selectedRoom={selectedRoom} 
                   onSelectRoom={setSelectedRoom} 
                 />
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowAddRoom(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                <div className="flex gap-1.5 shrink-0 ml-3">
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAddRoom(true)}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />
                     Cômodo
                   </Button>
-                  <Button size="sm" onClick={() => setShowAddDevice(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAddDevice(true)}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />
                     Dispositivo
                   </Button>
                 </div>
-              </section>
-
-              {filteredCameras.length > 0 && (
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Camera className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Câmeras</h2>
-                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      {filteredCameras.filter(c => c.status === 'online').length} online
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredCameras.map(camera => (
-                      <CameraCard 
-                        key={camera.id} 
-                        camera={{
-                          id: camera.id,
-                          name: camera.devices.name,
-                          location: camera.devices.rooms?.name || 'Sem local',
-                          status: camera.status as 'online' | 'offline',
-                          thumbnail: camera.snapshot_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
-                        }} 
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {filteredLights.length > 0 && (
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Lightbulb className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Iluminação</h2>
-                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      {filteredLights.filter(l => l.is_on).length} ligadas
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredLights.map(light => (
-                      <LightCard 
-                        key={light.id} 
-                        light={{
-                          id: light.id,
-                          name: light.name,
-                          room: light.rooms?.name || 'Sem local',
-                          isOn: light.is_on,
-                          brightness: light.settings?.brightness || 100,
-                          color: light.settings?.color,
-                          brand: (light.integrations?.type as any) || 'tuya',
-                        }} 
-                        onToggle={handleDeviceToggle}
-                        onBrightnessChange={handleBrightnessChange}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {filteredDevices.length > 0 && (
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Gamepad2 className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Controles Remotos</h2>
-                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      {filteredDevices.filter(d => d.is_on).length} ativos
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredDevices.map(device => (
-                      <RemoteCard 
-                        key={device.id} 
-                        device={{
-                          id: device.id,
-                          name: device.name,
-                          type: device.type as any,
-                          room: device.rooms?.name || 'Sem local',
-                          isOn: device.is_on,
-                          brand: (device.integrations?.type as any) || 'positivo',
-                          settings: device.settings,
-                        }} 
-                        onToggle={handleDeviceToggle}
-                        onSettingChange={handleDeviceSettingChange}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {devices.length === 0 && (
-                <div className="text-center py-12 glass rounded-xl">
-                  <p className="text-muted-foreground mb-4">Nenhum dispositivo cadastrado ainda</p>
-                  <Button onClick={() => setShowAddDevice(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Dispositivo
-                  </Button>
-                </div>
-              )}
+              </div>
             </>
           )}
-          </main>
+        </div>
+
+        {/* Notifications sidebar - RIGHT SIDE, visible on tablets landscape and up */}
+        <div className="hidden md:block w-72 lg:w-80 xl:w-96 h-full py-2 pr-4 shrink-0">
+          <div className="h-full">
+            <NotificationsPanel 
+              members={members}
+              recognizedMemberId={recognizedMemberId} 
+              onMemberRecognized={setRecognizedMemberId}
+            />
+          </div>
         </div>
       </div>
 
