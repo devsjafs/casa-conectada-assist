@@ -16,9 +16,14 @@ async function refreshSmartThingsToken(
   const clientSecret = Deno.env.get('SMARTTHINGS_CLIENT_SECRET')!;
 
   try {
+    const basic = btoa(`${clientId}:${clientSecret}`);
+
     const response = await fetch('https://api.smartthings.com/oauth/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basic}`,
+      },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
@@ -27,13 +32,24 @@ async function refreshSmartThingsToken(
       }).toString(),
     });
 
+    const responseText = await response.text();
+    console.log('Token refresh response:', response.status, responseText);
+
     if (!response.ok) {
-      console.error('Token refresh failed:', response.status);
+      console.error('Token refresh failed:', response.status, responseText);
       return null;
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     const expiresAt = new Date(Date.now() + (data.expires_in || 86400) * 1000).toISOString();
+
+    console.log('New tokens received:', {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in,
+      atLen: data.access_token?.length,
+      rtLen: data.refresh_token?.length,
+    });
 
     await supabase
       .from('smartthings_connections')
@@ -44,7 +60,7 @@ async function refreshSmartThingsToken(
       })
       .eq('user_id', userId);
 
-    console.log('Token refreshed successfully');
+    console.log('Token refreshed and saved successfully');
     return data.access_token;
   } catch (error) {
     console.error('Token refresh error:', error);
