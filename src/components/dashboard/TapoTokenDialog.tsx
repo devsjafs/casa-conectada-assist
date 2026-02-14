@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, Loader2, Info } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react';
 
 interface TapoTokenDialogProps {
   open: boolean;
@@ -17,78 +17,37 @@ interface TapoTokenDialogProps {
 const TapoTokenDialog = ({ open, onOpenChange, onSuccess }: TapoTokenDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [ipAddress, setIpAddress] = useState('');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [cameraName, setCameraName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ devices_found: number; devices_imported: number; devices: any[] } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !ipAddress.trim() || !username.trim() || !password.trim()) return;
+    if (!user || !email.trim() || !password.trim()) return;
 
     setLoading(true);
+    setResult(null);
     try {
-      // First, create or update the Tapo integration
-      const { data: integration, error: integrationError } = await supabase
-        .from('integrations')
-        .upsert({
-          user_id: user.id,
-          type: 'tapo' as any,
-          name: 'TP-Link Tapo',
-          is_connected: true,
-        }, {
-          onConflict: 'user_id,type'
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('tapo-login', {
+        body: { email: email.trim(), password: password.trim() },
+      });
 
-      if (integrationError) throw integrationError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Create the device
-      const { data: device, error: deviceError } = await supabase
-        .from('devices')
-        .insert({
-          user_id: user.id,
-          integration_id: integration.id,
-          name: cameraName || `Tapo ${ipAddress}`,
-          type: 'camera',
-          is_on: true,
-          metadata: {
-            ip_address: ipAddress,
-            rtsp_username: username,
-            rtsp_password: password,
-          },
-        })
-        .select()
-        .single();
-
-      if (deviceError) throw deviceError;
-
-      // Create the camera entry
-      const streamUrl = `rtsp://${username}:${password}@${ipAddress}/stream1`;
-      const { error: cameraError } = await supabase
-        .from('cameras')
-        .insert({
-          device_id: device.id,
-          stream_url: streamUrl,
-          status: 'offline', // Will be set to online when streaming starts
-        });
-
-      if (cameraError) throw cameraError;
-
+      setResult(data);
       toast({
-        title: 'Câmera Tapo configurada!',
-        description: `${cameraName || 'Câmera'} foi adicionada com sucesso.`,
+        title: 'TP-Link conectado!',
+        description: `${data.devices_imported} dispositivo(s) importado(s) com sucesso.`,
       });
 
       onSuccess();
-      handleClose();
     } catch (error: any) {
-      console.error('Error adding Tapo camera:', error);
+      console.error('Tapo login error:', error);
       toast({
-        title: 'Erro',
-        description: error.message || 'Não foi possível configurar a câmera.',
+        title: 'Erro ao conectar',
+        description: error.message || 'Verifique seu email e senha TP-Link.',
         variant: 'destructive',
       });
     } finally {
@@ -97,10 +56,9 @@ const TapoTokenDialog = ({ open, onOpenChange, onSuccess }: TapoTokenDialogProps
   };
 
   const handleClose = () => {
-    setIpAddress('');
-    setUsername('');
+    setEmail('');
     setPassword('');
-    setCameraName('');
+    setResult(null);
     onOpenChange(false);
   };
 
@@ -110,92 +68,85 @@ const TapoTokenDialog = ({ open, onOpenChange, onSuccess }: TapoTokenDialogProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="text-2xl">📹</span>
-            Adicionar Câmera Tapo
+            Conectar TP-Link Tapo
           </DialogTitle>
           <DialogDescription>
-            Configure o acesso RTSP para sua câmera TP-Link Tapo.
+            Faça login com sua conta TP-Link para importar seus dispositivos automaticamente.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="glass rounded-lg p-3 flex items-start gap-2 text-sm">
-          <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-          <div className="space-y-1">
-            <p className="font-medium">Como configurar:</p>
-            <ol className="text-muted-foreground text-xs space-y-1 list-decimal list-inside">
-              <li>Abra o app Tapo e selecione sua câmera</li>
-              <li>Vá em Configurações → Avançado → Conta da Câmera</li>
-              <li>Crie um usuário e senha para RTSP</li>
-              <li>Anote o IP da câmera (Configurações → Dispositivo)</li>
-            </ol>
+        {result ? (
+          <div className="space-y-4">
+            <div className="glass rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-primary">{result.devices_imported}</p>
+              <p className="text-sm text-muted-foreground">dispositivo(s) importado(s)</p>
+            </div>
+            {result.devices.length > 0 && (
+              <div className="space-y-2">
+                {result.devices.map((d, i) => (
+                  <div key={i} className="glass rounded-lg p-3 flex items-center justify-between text-sm">
+                    <div>
+                      <p className="font-medium">{d.name}</p>
+                      <p className="text-xs text-muted-foreground">{d.model} · {d.type}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${d.online ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                      {d.online ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button onClick={handleClose} className="w-full">Fechar</Button>
           </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="cameraName">Nome da câmera (opcional)</Label>
-            <Input
-              id="cameraName"
-              placeholder="Ex: Câmera Sala"
-              value={cameraName}
-              onChange={(e) => setCameraName(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="ipAddress">Endereço IP da câmera</Label>
-            <Input
-              id="ipAddress"
-              placeholder="Ex: 192.168.1.100"
-              value={ipAddress}
-              onChange={(e) => setIpAddress(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuário RTSP</Label>
+              <Label htmlFor="tapoEmail">Email da conta TP-Link</Label>
               <Input
-                id="username"
-                placeholder="Usuário"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="tapoEmail"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="password">Senha RTSP</Label>
+              <Label htmlFor="tapoPassword">Senha</Label>
               <Input
-                id="password"
+                id="tapoPassword"
                 type="password"
-                placeholder="Senha"
+                placeholder="Sua senha TP-Link"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
-          </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || !ipAddress.trim() || !username.trim() || !password.trim()} 
-              className="flex-1"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Camera className="w-4 h-4 mr-2" />
-                  Adicionar
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+            <p className="text-xs text-muted-foreground">
+              Use o mesmo email e senha do app Tapo/Kasa. Seus dispositivos serão importados automaticamente.
+            </p>
+
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={handleClose} className="flex-1" disabled={loading}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading || !email.trim() || !password.trim()} className="flex-1">
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Conectar
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
