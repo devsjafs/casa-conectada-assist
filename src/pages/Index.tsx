@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Plug, Home as HomeIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/dashboard/Header';
@@ -56,6 +57,7 @@ interface HouseholdMember {
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -149,6 +151,36 @@ const Index = () => {
       .from('devices')
       .update({ settings: { ...device.settings, brightness } })
       .eq('id', id);
+  };
+
+  const handleDeleteDevice = async (deviceId: string) => {
+    // Delete camera entry first (if exists), then device
+    await supabase.from('cameras').delete().eq('device_id', deviceId);
+    await supabase.from('devices').delete().eq('id', deviceId);
+    
+    setDevices(prev => prev.filter(d => d.id !== deviceId));
+    setCameras(prev => prev.filter(c => c.device_id !== deviceId));
+    
+    toast({
+      title: 'Dispositivo excluído',
+      description: 'O dispositivo foi removido com sucesso.',
+    });
+  };
+
+  const handleDeleteCamera = async (cameraId: string) => {
+    const camera = cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+    
+    await supabase.from('cameras').delete().eq('id', cameraId);
+    await supabase.from('devices').delete().eq('id', camera.device_id);
+    
+    setCameras(prev => prev.filter(c => c.id !== cameraId));
+    setDevices(prev => prev.filter(d => d.id !== camera.device_id));
+    
+    toast({
+      title: 'Câmera excluída',
+      description: 'A câmera foi removida com sucesso.',
+    });
   };
 
   const handleDeviceSettingChange = async (id: string, setting: string, value: number | string) => {
@@ -293,6 +325,7 @@ const Index = () => {
                               status: c.status as 'online' | 'offline',
                               thumbnail: c.snapshot_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
                             }}
+                            onDelete={handleDeleteCamera}
                           />
                         );
                       }
@@ -312,6 +345,7 @@ const Index = () => {
                             }}
                             onToggle={handleDeviceToggle}
                             onBrightnessChange={handleBrightnessChange}
+                            onDelete={handleDeleteDevice}
                           />
                         );
                       }
@@ -330,6 +364,7 @@ const Index = () => {
                           }}
                           onToggle={handleDeviceToggle}
                           onSettingChange={handleDeviceSettingChange}
+                          onDelete={handleDeleteDevice}
                         />
                       );
                     })}

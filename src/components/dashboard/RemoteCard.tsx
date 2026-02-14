@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Tv, Wind, Speaker, Fan, Power, ChevronRight } from 'lucide-react';
+import { Tv, Wind, Speaker, Fan, Power, ChevronRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ACControlSheet from './ACControlSheet';
@@ -23,6 +23,7 @@ interface RemoteCardProps {
   device: RemoteDevice;
   onToggle: (id: string) => void;
   onSettingChange: (id: string, setting: string, value: number | string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const deviceIcons: Record<string, React.ElementType> = {
@@ -32,7 +33,7 @@ const deviceIcons: Record<string, React.ElementType> = {
   fan: Fan,
 };
 
-const RemoteCard = ({ device, onToggle, onSettingChange }: RemoteCardProps) => {
+const RemoteCard = ({ device, onToggle, onSettingChange, onDelete }: RemoteCardProps) => {
   const [showACControl, setShowACControl] = useState(false);
   const Icon = deviceIcons[device.type] || Tv;
 
@@ -50,13 +51,22 @@ const RemoteCard = ({ device, onToggle, onSettingChange }: RemoteCardProps) => {
     <>
       <div 
         className={cn(
-          "glass rounded-2xl p-3 transition-all duration-200 cursor-pointer select-none",
+          "glass rounded-2xl p-3 transition-all duration-200 cursor-pointer select-none relative group",
           device.isOn 
             ? "ring-1 ring-accent/30 bg-accent/5" 
             : "opacity-70"
         )}
         onClick={handleCardClick}
       >
+        {onDelete && (
+          <button
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-destructive/80 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            onClick={(e) => { e.stopPropagation(); onDelete(device.id); }}
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+
         <div className="flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-xl transition-colors",
