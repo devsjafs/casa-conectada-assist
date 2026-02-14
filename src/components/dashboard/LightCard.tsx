@@ -1,4 +1,4 @@
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
@@ -17,9 +17,10 @@ interface LightCardProps {
   light: Light;
   onToggle: (id: string) => void;
   onBrightnessChange: (id: string, brightness: number) => void;
+  onDelete?: (id: string) => void;
 }
 
-const LightCard = ({ light, onToggle, onBrightnessChange }: LightCardProps) => {
+const LightCard = ({ light, onToggle, onBrightnessChange, onDelete }: LightCardProps) => {
   const [localBrightness, setLocalBrightness] = useState(light.brightness);
 
   const handleBrightnessChange = (value: number[]) => {
@@ -30,13 +31,22 @@ const LightCard = ({ light, onToggle, onBrightnessChange }: LightCardProps) => {
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-3 transition-all duration-200 cursor-pointer select-none",
+        "glass rounded-2xl p-3 transition-all duration-200 cursor-pointer select-none relative group",
         light.isOn 
           ? "ring-1 ring-primary/30 bg-primary/5" 
           : "opacity-70"
       )}
       onClick={() => onToggle(light.id)}
     >
+      {onDelete && (
+        <button
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-destructive/80 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          onClick={(e) => { e.stopPropagation(); onDelete(light.id); }}
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
+
       <div className="flex items-center gap-3 mb-2">
         <div className={cn(
           "p-2 rounded-xl transition-colors",
