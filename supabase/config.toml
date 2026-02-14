@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.smartthings-auth-callback]
 verify_jwt = false
+
+[functions.tapo-login]
+verify_jwt = false
