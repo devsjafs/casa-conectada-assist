@@ -1,4 +1,4 @@
-import { Camera, Trash2 } from 'lucide-react';
+import { Camera, Trash2, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -7,7 +7,7 @@ interface CameraType {
   name: string;
   location: string;
   status: 'online' | 'offline';
-  thumbnail: string;
+  thumbnail: string | null;
 }
 
 interface CameraCardProps {
@@ -17,6 +17,7 @@ interface CameraCardProps {
 
 const CameraCard = ({ camera, onDelete }: CameraCardProps) => {
   const [showDelete, setShowDelete] = useState(false);
+  const hasStream = camera.thumbnail && !camera.thumbnail.includes('unsplash');
 
   return (
     <div 
@@ -24,11 +25,18 @@ const CameraCard = ({ camera, onDelete }: CameraCardProps) => {
       onContextMenu={(e) => { e.preventDefault(); setShowDelete(s => !s); }}
     >
       <div className="aspect-[16/10] relative">
-        <img 
-          src={camera.thumbnail} 
-          alt={camera.name}
-          className="w-full h-full object-cover"
-        />
+        {hasStream ? (
+          <img 
+            src={camera.thumbnail!} 
+            alt={camera.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center gap-1.5">
+            <WifiOff className="w-8 h-8 text-muted-foreground/50" />
+            <span className="text-[10px] text-muted-foreground/60">Sem stream</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
         
         {/* Status dot */}
