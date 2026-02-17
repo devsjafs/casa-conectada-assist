@@ -323,7 +323,7 @@ const Index = () => {
                               name: c.devices.name,
                               location: c.devices.rooms?.name || 'Sem local',
                               status: c.status as 'online' | 'offline',
-                              thumbnail: c.snapshot_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+                              thumbnail: c.snapshot_url || null,
                             }}
                             onDelete={handleDeleteCamera}
                           />
