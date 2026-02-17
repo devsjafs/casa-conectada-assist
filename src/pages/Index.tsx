@@ -223,6 +223,21 @@ const Index = () => {
         .eq('id', id);
     }
   };
+  const handleConfigureStream = async (cameraId: string, streamUrl: string) => {
+    await supabase
+      .from('cameras')
+      .update({ stream_url: streamUrl, status: 'online' })
+      .eq('id', cameraId);
+
+    setCameras(prev => prev.map(c =>
+      c.id === cameraId ? { ...c, stream_url: streamUrl, status: 'online' } : c
+    ));
+
+    toast({
+      title: 'Stream configurado',
+      description: 'A URL RTSP foi salva com sucesso.',
+    });
+  };
 
   const lights = devices.filter(d => d.type === 'light');
   const remoteDevices = devices.filter(d => ['ac', 'tv', 'soundbar', 'fan'].includes(d.type));
@@ -324,8 +339,10 @@ const Index = () => {
                               location: c.devices.rooms?.name || 'Sem local',
                               status: c.status as 'online' | 'offline',
                               thumbnail: c.snapshot_url || null,
+                              streamUrl: c.stream_url || null,
                             }}
                             onDelete={handleDeleteCamera}
+                            onConfigureStream={handleConfigureStream}
                           />
                         );
                       }
